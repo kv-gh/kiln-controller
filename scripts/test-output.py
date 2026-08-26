@@ -1,8 +1,15 @@
 #!/usr/bin/env python
-import config
-import digitalio
+import os
+import sys
 import time
 import datetime
+
+# Add project root to path (script is in scripts/ subdirectory)
+project_root = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+sys.path.insert(0, project_root)
+
+import config
+import digitalio
 
 try:
     import board

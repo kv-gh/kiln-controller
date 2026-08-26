@@ -11,7 +11,7 @@ import config
 
 
 def load_tuner():
-    path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'kiln-tuner.py'))
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'scripts', 'kiln-tuner.py'))
     spec = importlib.util.spec_from_file_location('kiln_tuner', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -397,7 +397,7 @@ def test_missing_config_exits(monkeypatch):
 
     monkeypatch.setattr(builtins, '__import__', blocked)
 
-    path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'kiln-tuner.py'))
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'scripts', 'kiln-tuner.py'))
     spec = importlib.util.spec_from_file_location('kiln_tuner_missing_config', path)
     module = importlib.util.module_from_spec(spec)
     with pytest.raises(SystemExit):

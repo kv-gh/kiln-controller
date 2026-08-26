@@ -1,3 +1,39 @@
+[project]
+name = "kiln-controller"
+version = "0.1.0"
+description = "Turns a Raspberry Pi into an inexpensive, web-enabled kiln controller."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "adafruit-circuitpython-bitbangio",  # for folks using SW SPI (bit banging)
+    "adafruit-circuitpython-max31855",  # supported thermocouple module
+    "adafruit-circuitpython-max31856",  # supported thermocouple module
+    # Untested/optional thermocouple modules (uncomment if needed):
+    # "adafruit-circuitpython-max31865",  # for PT100 platinum thermocouples
+    # "adafruit-circuitpython-mcp9600",   # for MCP9600/MCP9601
+    "bottle",
+    "gevent",
+    "gevent-websocket",
+    "greenlet",
+    "paho-mqtt",  # MQTT telemetry (only used when mqtt_enable is set in config.py)
+    "requests",
+    "rpi-lgpio",  # provides RPi.GPIO module for newer kernels/Pi models
+    "setuptools",
+    "websocket-client",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+viz = [
+    "matplotlib",  # for kiln-tuner.py --showplot
+]
+
+[tool.uv]
+package = false
+
 [tool.ruff]
 line-length = 100
 exclude = ["venv", ".git"]

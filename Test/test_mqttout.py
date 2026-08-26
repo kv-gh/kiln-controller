@@ -140,9 +140,9 @@ def test_paho_not_imported_when_disabled(monkeypatch):
 
 def test_paho_listed_in_requirements():
     root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-    with open(os.path.join(root, 'requirements.txt')) as f:
-        requirements = f.read()
-    assert 'paho-mqtt' in requirements
+    with open(os.path.join(root, 'pyproject.toml')) as f:
+        pyproject = f.read()
+    assert 'paho-mqtt' in pyproject
 
 
 def test_make_client_falls_back_to_paho(monkeypatch, mqtt_config):

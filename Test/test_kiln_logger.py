@@ -6,7 +6,7 @@ import pytest
 
 
 def load_logger():
-    path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'kiln-logger.py'))
+    path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'scripts', 'kiln-logger.py'))
     spec = importlib.util.spec_from_file_location('kiln_logger', path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
