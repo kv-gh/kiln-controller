@@ -261,10 +261,16 @@ def profile_files():
     except Exception:
         return []
 
+def _tar_add_bytes(tar, arc_name, text):
+    """
+    add an in-memory text file to a tar archive.
+    """
 def _firing_active():
-    '''True while a kiln firing is in progress or paused. the config dump
+    """
+    True while a kiln firing is in progress or paused. the config dump
     replays the journal, which can take minutes, so it is refused during
-    a firing to keep the oven loop free from interference.'''
+    a firing to keep the oven loop free from interference.
+    """
     return getattr(oven, 'state', None) in ('RUNNING', 'PAUSED')
 
 def _tar_add_bytes(tar, arc_name, text):
@@ -314,11 +320,6 @@ def gather_log_lines():
         list[str]: A sorted list of unique log lines. In case of an
         exception, an empty list is returned.
     """
-    '''gather the kiln log lines from the systemd journal for the
-    kiln-controller unit. returns a sorted, de-duplicated list of
-    lines. no timeout is applied -- the journal can legitimately take
-    minutes to replay after weeks of two-second oven samples -- which is
-    why api_dump refuses to run while a firing is active.'''
     try:
         out = subprocess.check_output(
             "journalctl -u kiln-controller --no-pager 2>/dev/null",
