@@ -825,7 +825,7 @@ def test_render_schedule_after_list_lists_running_and_scheduled(js):
     js.eval('function apiPost(obj, cb) {'
             '  cb({ success: true, schedules: [{ profile: "cone-05-long-bisque",'
             '                                    id: "aa11bb22",'
-            '                                    start_time: %d, startat: 0, fired: false }] });'
+            '                                    start_time: %d, start_at: 0, fired: false }] });'
             '}' % future)
     js.eval('function formatDuration(s) { return "DUR" + s; }')
     js.eval('function escHtml(s) { return s; }')
@@ -853,7 +853,7 @@ def test_render_schedule_after_list_sorts_by_finish(js):
             '];')
     js.eval('function apiPost(obj, cb) {'
             '  cb({ success: true, schedules: [{ profile: "short",'
-            '                                    start_time: %d, startat: 0, fired: false }] });'
+            '                                    start_time: %d, start_at: 0, fired: false }] });'
             '}' % future)
     js.eval('function formatDuration(s) { return "DUR" + s; }')
     js.eval('function escHtml(s) { return s; }')

@@ -289,10 +289,10 @@ def test_set_heat_rate_caps_window():
 def test_run_profile(no_auto_restarts):
     oven = Oven()
     profile = get_profile()
-    oven.run_profile(profile, startat=10, allow_seek=False)
+    oven.run_profile(profile, start_at=10, allow_seek=False)
     assert oven.state == "RUNNING"
     assert oven.runtime == 600
-    assert oven.startat == 600
+    assert oven.start_at == 600
     assert oven.totaltime == 19400
     assert oven.profile is profile
 
@@ -300,15 +300,15 @@ def test_run_profile(no_auto_restarts):
 def test_run_profile_seek_start_time_matches_runtime(no_auto_restarts, monkeypatch):
     '''seek offset must be reflected in start_time so update_runtime
     preserves the sought position. previously start_time was derived from
-    startat alone and the seek silently reset to zero unless
+    start_at alone and the seek silently reset to zero unless
     kiln_must_catch_up happened to shift it back.'''
     monkeypatch.setattr(config, 'kiln_must_catch_up', False)
     oven = Oven()
     oven.board = FakeBoard(250)  # kiln still hot from a previous run
-    oven.run_profile(get_profile(), startat=0, allow_seek=True)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=True)
     # seek found 3800s into the profile for a 250c oven
     assert oven.runtime == 3800
-    # start_time must be set back by the runtime, not just startat
+    # start_time must be set back by the runtime, not just start_at
     offset = time.time() - oven.start_time
     assert offset == pytest.approx(3800, abs=2)
     # and update_runtime keeps the sought position instead of zeroing it
@@ -318,10 +318,10 @@ def test_run_profile_seek_start_time_matches_runtime(no_auto_restarts, monkeypat
     assert oven.target == pytest.approx(250.0)
 
 
-def test_run_profile_no_seek_start_time_matches_startat(no_auto_restarts):
+def test_run_profile_no_seek_start_time_matches_start_at(no_auto_restarts):
     oven = Oven()
     oven.board = FakeBoard(250)
-    oven.run_profile(get_profile(), startat=10, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=10, allow_seek=False)
     assert oven.runtime == 600
     offset = time.time() - oven.start_time
     assert offset == pytest.approx(600, abs=2)
@@ -336,10 +336,10 @@ def test_run_sequence_increments_and_run_id_in_status(no_auto_restarts):
     # after the specific run that is in progress.
     oven = Oven()
     oven.board = FakeBoard(250)
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     assert oven.run_sequence == 1
     assert oven.get_state()['run_id'] == 1
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     assert oven.run_sequence == 2
     assert oven.get_state()['run_id'] == 2
 
@@ -348,7 +348,7 @@ def test_abort_run_tracks_ended_sequence_and_idle_since(no_auto_restarts):
     import time as _time
     oven = Oven()
     oven.board = FakeBoard(250)
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     seq = oven.run_sequence
     oven.abort_run()
     assert oven.ended_run_sequence == seq
@@ -356,7 +356,7 @@ def test_abort_run_tracks_ended_sequence_and_idle_since(no_auto_restarts):
     assert oven.state == "IDLE"
     # a new firing gets a higher sequence; the ended sequence only
     # advances when that firing actually ends
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     assert oven.run_sequence == seq + 1
     assert oven.ended_run_sequence == seq
 
@@ -752,16 +752,16 @@ def test_automatic_restart(tmp_path, monkeypatch):
 
     calls = {}
 
-    def fake_run_profile(self, profile, startat=0, allow_seek=True):
+    def fake_run_profile(self, profile, start_at=0, allow_seek=True):
         calls['profile'] = profile
-        calls['startat'] = startat
+        calls['start_at'] = start_at
         calls['allow_seek'] = allow_seek
 
     monkeypatch.setattr(oven_module().Oven, 'run_profile', fake_run_profile)
 
     oven.automatic_restart()
 
-    assert calls['startat'] == 1
+    assert calls['start_at'] == 1
     assert calls['allow_seek'] is False
     assert calls['profile'].name == 'test-fast'
     assert oven.cost == 3.5
@@ -1054,7 +1054,7 @@ def test_runtime_survives_spring_forward(monkeypatch):
     monkeypatch.setattr(oven_module().datetime, 'datetime', FakeDateTime)
     oven = Oven()
     oven.board = FakeBoard(250)
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     assert oven.runtime == 0
 
     clock['epoch'] += 1200
@@ -1083,7 +1083,7 @@ def test_runtime_survives_fall_back(monkeypatch):
     monkeypatch.setattr(oven_module().datetime, 'datetime', FakeDateTime)
     oven = Oven()
     oven.board = FakeBoard(250)
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     assert oven.runtime == 0
 
     clock['epoch'] += 1200

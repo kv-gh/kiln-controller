@@ -392,11 +392,11 @@ class Oven(threading.Thread):
     def get_start_from_temperature(profile, temp):
         target_temp = profile.get_target_temperature(0)
         if temp > target_temp + 5:
-            startat = profile.find_next_time_from_temperature(temp)
-            log.info("seek_start is in effect, starting at: {} s, {} deg".format(round(startat), round(to_display(temp))))
+            start_at = profile.find_next_time_from_temperature(temp)
+            log.info("seek_start is in effect, starting at: {} s, {} deg".format(round(start_at), round(to_display(temp))))
         else:
-            startat = 0
-        return startat
+            start_at = 0
+        return start_at
 
     def set_heat_rate(self,runtime,temp):
         '''heat rate is the heating rate in degrees/hour
@@ -416,9 +416,9 @@ class Oven(threading.Thread):
         if time2 > time1:
             self.heat_rate = ((temp2 - temp1) / (time2 - time1))*3600
 
-    def run_profile(self, profile, startat=0, allow_seek=True):
+    def run_profile(self, profile, start_at=0, allow_seek=True):
         log.debug('run_profile run on thread' + threading.current_thread().name)
-        runtime = startat * 60
+        runtime = start_at * 60
         if allow_seek:
             if self.state == 'IDLE':
                 if config.seek_start:
@@ -426,7 +426,7 @@ class Oven(threading.Thread):
                     runtime += self.get_start_from_temperature(profile, temp)
 
         self.reset()
-        self.startat = startat * 60
+        self.start_at = start_at * 60
         self.runtime = runtime
         # derive start_time from the (possibly seek-adjusted) runtime so
         # update_runtime() preserves it instead of resetting to zero
@@ -438,7 +438,7 @@ class Oven(threading.Thread):
         # a new firing invalidates any cooled_safe alert armed by the
         # previous one: the kiln is about to get hot again
         self.cooled_safe_armed_for = None
-        log.info("Running schedule %s starting at %d minutes" % (profile.name,startat))
+        log.info("Running schedule %s starting at %d minutes" % (profile.name,start_at))
         log.info("Starting")
 
     def abort_run(self, reason='stopped'):
@@ -811,21 +811,21 @@ class Oven(threading.Thread):
 
     def automatic_restart(self):
         with open(config.automatic_restart_state_file) as infile: d = json.load(infile)
-        startat = d["runtime"]/60
+        start_at = d["runtime"]/60
         filename = "%s.json" % (d["profile"])
         profile_path = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'storage','profiles',filename))
 
-        log.info("automatically restarting profile = %s at minute = %d" % (profile_path,startat))
+        log.info("automatically restarting profile = %s at minute = %d" % (profile_path,start_at))
         with open(profile_path) as infile:
             profile_json = json.dumps(json.load(infile))
         profile = Profile(profile_json)
-        self.run_profile(profile, startat=startat, allow_seek=False)  # We don't want a seek on an auto restart.
+        self.run_profile(profile, start_at=start_at, allow_seek=False)  # We don't want a seek on an auto restart.
         self.cost = d["cost"]
         time.sleep(1)
         self.ovenwatcher.record(profile)
         self._emit('restart_resumed',
                    profile=d["profile"],
-                   runtime_minutes=round(startat),
+                   runtime_minutes=round(start_at),
                    cost=round(self.cost, 2))
 
     def set_ovenwatcher(self,watcher):

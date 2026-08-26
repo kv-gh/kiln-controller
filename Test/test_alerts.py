@@ -35,7 +35,7 @@ class StubOven:
     def set_alert_manager(self, manager):
         pass
 
-    def run_profile(self, profile, startat=0, allow_seek=True):
+    def run_profile(self, profile, start_at=0, allow_seek=True):
         pass
 
     def abort_run(self):

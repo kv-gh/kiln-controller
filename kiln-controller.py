@@ -381,11 +381,11 @@ def start_run(wanted, start_at=0, allow_seek=None):
     # FIXME juggling of json should happen in the Profile class
     profile_json = json.dumps(profile)
     profile = Profile(profile_json)
-    oven.run_profile(profile, startat=start_at, allow_seek=allow_seek)
+    oven.run_profile(profile, start_at=start_at, allow_seek=allow_seek)
     ovenWatcher.record(profile)
     alert_manager.emit('run_started',
                        context={'profile': wanted,
-                                'startat_minutes': start_at})
+                                'start_at_minutes': start_at})
     return True
 
 def parse_start_time(value):
@@ -495,7 +495,7 @@ def api_schedule(json_body):
                 return { "success" : False, "error" : f"invalid chain_after {chain_after}" }
         else:
             return { "success" : False, "error" : "invalid chain_after value"}
-    entry = scheduler.add(wanted, epoch, startat=start_at, chain_after=chain_after)
+    entry = scheduler.add(wanted, epoch, start_at=start_at, chain_after=chain_after)
     log.info(f"api scheduled profile {wanted} at {epoch}")
     return { "success" : True, "id" : entry["id"], "profile" : wanted, "start_time" : epoch }
 

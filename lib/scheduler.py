@@ -42,7 +42,7 @@ class Scheduler(object):
         with open(self.state_file, 'w') as outfile:
             json.dump(self.schedules, outfile, indent=4, ensure_ascii=False)
 
-    def add(self, profile, start_time, startat=0, chain_after=None):
+    def add(self, profile, start_time, start_at=0, chain_after=None):
         '''schedule a firing of the given profile at start_time
         (unix epoch seconds). returns the new schedule entry.
 
@@ -57,7 +57,7 @@ class Scheduler(object):
             'id': uuid.uuid4().hex[:8],
             'profile': profile,
             'start_time': start_time,
-            'startat': startat,
+            'start_at': start_at,
             'created_at': time.time(),
             'fired': False,
             'status': 'pending',
