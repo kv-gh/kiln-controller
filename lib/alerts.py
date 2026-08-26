@@ -384,10 +384,9 @@ class WebhookSink(object):
             response = self.poster(url, payload, self.timeout)
             status = getattr(response, 'status_code', 0)
             if status >= 300:
-                log.error(f"alert webhook post to {url} failed: HTTP {status,
-                             getattr(response, 'text', ''} %s"[:200]))
+                log.error(f"alert webhook post to {url} failed: HTTP {status} {getattr(response, 'text', '')[:200]}")
             else:
-                log.info(f"alert {payload[\'alert_id\']} posted to webhook")
+                log.info(f"alert {payload["alert_id"]} posted to webhook")
         except Exception as e:
             log.error(f"alert webhook post to {url} failed: {e}")
 

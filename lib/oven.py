@@ -805,14 +805,14 @@ class Oven(threading.Thread):
         with open(config.automatic_restart_state_file) as infile:
             d = json.load(infile)
         if d["state"] != "RUNNING":
-            duplog.info(f"automatic restart not possible. state = {d[\"state\"]}")
+            duplog.info(f"automatic restart not possible. state = {d["state"]}")
             return False
         return True
 
     def automatic_restart(self):
         with open(config.automatic_restart_state_file) as infile: d = json.load(infile)
         start_at = d["runtime"]/60
-        filename = f"{d[\"profile\"]}.json"
+        filename = f"{d["profile"]}.json"
         profile_path = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'storage','profiles',filename))
 
         log.info(f"automatically restarting profile = {profile_path} at minute = {start_at}")
@@ -992,26 +992,13 @@ class SimulatedOven(Oven):
         if heat_on > 0:
             self.heat = heat_on
 
-        log.info(f"simulation: -> {int(self.p_heat * pid)}W heater: %.0f -> {to_display(self.t_h}W oven: %.0f -> %dW env",
-            int(self.p_ho),
-            to_display(self.t),
-            int(self.p_env)))
+        log.info(f"simulation: -> {int(self.p_heat * pid)}W heater: {to_display(self.t_h)} -> {int(self.p_ho)}W oven: {to_display(self.t)} -> {int(self.p_env)}W env")
 
         time_left = self.totaltime - self.runtime
 
         try:
             ps = self.get_display_pidstats()
-            log.info(f"temp=%.2f, target=%.2f, error=%.2f, pid=%.2f, p=%.2f, i=%.2f, d=%.2f, heat_on=%.2f, heat_off=%.2f, run_time={ps['ispoint']}, total_time={ps['setpoint'],
-                ps['err'],
-                ps['pid'],
-                ps['p'],
-                ps['i'],
-                ps['d'],
-                heat_on,
-                heat_off,
-                self.runtime,
-                self.totaltime,
-                time_left}, time_left=%d")
+            log.info(f"temp={ps['ispoint']}, target={ps['setpoint']}, error={ps['err']}, pid={ps['pid']}, p={ps['p']}, i={ps['i']}, d={ps['d']}, heat_on={heat_on}, heat_off={heat_off}, run_time={self.runtime}, total_time={self.totaltime}, time_left={time_left}")
         except KeyError:
             pass
 

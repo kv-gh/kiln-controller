@@ -139,9 +139,9 @@ class Scheduler(object):
             try:
                 started = self.fire_callback(entry) or False
             except Exception as e:
-                log.error(f"error firing schedule {entry['id']}: {e}")
+                log.error(f"error firing schedule {entry["id"]}: {e}")
         else:
-            log.error(f"no fire_callback set, not firing schedule {entry}"['id'])
+            log.error(f"no fire_callback set, not firing schedule {entry["id"]}")
         if started:
             self.mark_fired(entry, fired=True, status='fired')
         elif entry.get('chain_after'):

@@ -865,7 +865,7 @@ def handle_tune():
     if cmd == 'start':
         if oven.state not in ("IDLE", "TUNING"):
             return {"success": False,
-                    "error": f"cannot tune while a schedule is running (state: {oven.state})"}}
+                    "error": f"cannot tune while a schedule is running (state: {oven.state})"}
         # only reject while a tuning run is actually in flight; DONE and
         # ERROR are terminal states that must allow starting again
         # (previously anything but IDLE was rejected, which locked the
@@ -1086,7 +1086,7 @@ def import_profile(profile):
     filepath = os.path.join(profile_path, profile["name"] + ".json")
     with open(filepath, "w+") as f:
         f.write(json.dumps(profile))
-    log.info(f"imported community profile {profile}"["name"])
+    log.info(f"imported community profile {profile["name"]}")
     return filepath
 
 
@@ -1228,7 +1228,7 @@ def _ensure_fork(owner_repo, token):
     user = requests.get(_github_api_url("user"), headers=_github_headers(token), timeout=15)
     user.raise_for_status()
     username = user.json()["login"]
-    fork_repo = f"{username}/{owner_repo.split("/", 1}"[1])
+    fork_repo = f"{username}/{owner_repo.split('/', 1)[1]}"
     if requests.get(_github_api_url(f"repos/{fork_repo}"), headers=_github_headers(token),
                     timeout=15).status_code == 404:
         requests.post(_github_api_url(f"repos/{owner_repo}/forks"),
@@ -1283,7 +1283,7 @@ def share_profile_as_pr(profile, category, token):
     refs = requests.get(_github_api_url(f"repos/{fork_repo}/git/ref/heads/{branch}"),
                         headers=_github_headers(token), timeout=15)
     refs.raise_for_status()
-    feature_branch = f"kiln-share-{re.sub}"(r"[^A-Za-z0-9_.-]", "-", name)
+    feature_branch = f"kiln-share-{re.sub(r"[^A-Za-z0-9_.-]", "-", name)}"
     requests.post(_github_api_url(f"repos/{fork_repo}/git/refs"),
                   json={"ref": f"refs/heads/{feature_branch}", "sha": refs.json()["object"]["sha"]},
                   headers=_github_headers(token), timeout=15)

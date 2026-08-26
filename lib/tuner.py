@@ -166,8 +166,7 @@ class Tuner:
 
             self.state = self.CALCULATING
             self.phase = None
-            log.info(f"recording complete -- analyzing {len(self.points)} data points"
-                     len(self.csv_data))
+            log.info(f"recording complete -- analyzing {len(self.csv_data)} data points")
             self._calculate()
 
             if not self._stop_requested:
@@ -204,8 +203,7 @@ class Tuner:
         # --- heating phase ---
         self.phase = "heating"
         self.oven.heat = self.oven.time_step
-        log.info(f"HEATING PHASE -- ramping to {to_display(self.target_temp_c):.1f} {config.temp_scale}"
-                 (to_display(target_temp_c), config.temp_scale))
+        log.info(f"HEATING PHASE -- ramping to {to_display(target_temp_c)} {config.temp_scale}")
 
         while True:
             if self._stop_requested:
@@ -227,8 +225,7 @@ class Tuner:
             self.oven.heat = self.oven.time_step
 
             elapsed = time.time() - self.start_time
-            log.info(f"  heating: %.1f / %.1f {to_display(temp)}  (elapsed: %.0fs, {to_display(target_temp_c} points)",
-                      config.temp_scale, elapsed, len(self.csv_data)))
+            log.info(f"  heating: {to_display(temp)} / {to_display(target_temp_c)} {config.temp_scale}  (elapsed: {elapsed}s, {len(self.csv_data)} points)")
 
             if to_display(temp) >= to_display(target_temp_c):
                 log.info(f"heating phase COMPLETE -- reached {to_display(temp):.1f} {config.temp_scale} in {elapsed:.0f}s")
@@ -269,8 +266,7 @@ class Tuner:
             self.oven.heat = 0
 
             elapsed = time.time() - self.start_time
-            log.info(f"  cooling: %.1f / %.1f {to_display(temp)}  (elapsed: %.0fs, {to_display(target_temp_c} points)",
-                      config.temp_scale, elapsed, len(self.csv_data)))
+            log.info(f"  cooling: {to_display(temp)} / {to_display(target_temp_c)} config.temp_scale  (elapsed: {elapsed}s, {len(self.csv_data)} points)")
 
             if to_display(temp) <= to_display(target_temp_c):
                 log.info(f"cooling phase COMPLETE -- reached {to_display(temp):.1f} {config.temp_scale} in {elapsed:.0f}s")
@@ -303,8 +299,7 @@ class Tuner:
         # only use the heating portion (up to first time max temp is reached)
         max_temp = max(ydata)
         heating_end = ydata.index(max_temp) + 1
-        log.info(f"heating data: {heating_end} of %d points, temp range %.1f - %.1f {len(xdata}", min(ydata), max(ydata),
-                  config.temp_scale))
+        log.info(f"heating data: {heating_end} of {len(xdata)} points, temp range {min(ydata)} - {max(ydata)} {config.temp_scale}")
         xdata = xdata[:heating_end]
         ydata = ydata[:heating_end]
 
