@@ -30,7 +30,7 @@ currency_type   = "$"   # Currency Symbol to show when calculating cost to run j
 # temperature data from the adafruit-31855 or adafruit-31856.
 # Blinka supports many different boards. I've only tested raspberry pi.
 #
-# First you must decide whether to use hardware spi or software spi.
+# First, you must decide whether to use hardware spi or software spi.
 # 
 # Hardware SPI
 #

@@ -5,9 +5,8 @@
 *.swp
 .DStore/
 thumbs.db
-#storage/profiles
-#config.py
+storage/
+config.py
 .idea/*
 state.json
-storage/schedules.json
 venv/*
