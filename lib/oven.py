@@ -261,25 +261,25 @@ class ThermocoupleError(Exception):
         super().__init__(self.message)
 
     def set_ignore(self):
-        if self.message == "not connected" and config.ignore_tc_lost_connection == True:
+        if self.message == "not connected" and config.ignore_tc_lost_connection :
             self.ignore = True
-        if self.message == "short circuit" and config.ignore_tc_short_errors == True:
+        if self.message == "short circuit" and config.ignore_tc_short_errors :
             self.ignore = True
-        if self.message == "unknown" and config.ignore_tc_unknown_error == True:
+        if self.message == "unknown" and config.ignore_tc_unknown_error :
             self.ignore = True
-        if self.message == "cold junction range fault" and config.ignore_tc_cold_junction_range_error == True:
+        if self.message == "cold junction range fault" and config.ignore_tc_cold_junction_range_error :
             self.ignore = True
-        if self.message == "thermocouple range fault" and config.ignore_tc_range_error == True:
+        if self.message == "thermocouple range fault" and config.ignore_tc_range_error :
             self.ignore = True
-        if self.message == "cold junction temp too high" and config.ignore_tc_cold_junction_temp_high == True:
+        if self.message == "cold junction temp too high" and config.ignore_tc_cold_junction_temp_high :
             self.ignore = True
-        if self.message == "cold junction temp too low" and config.ignore_tc_cold_junction_temp_low == True:
+        if self.message == "cold junction temp too low" and config.ignore_tc_cold_junction_temp_low :
             self.ignore = True
-        if self.message == "thermocouple temp too high" and config.ignore_tc_temp_high == True:
+        if self.message == "thermocouple temp too high" and config.ignore_tc_temp_high :
             self.ignore = True
-        if self.message == "thermocouple temp too low" and config.ignore_tc_temp_low == True:
+        if self.message == "thermocouple temp too low" and config.ignore_tc_temp_low :
             self.ignore = True
-        if self.message == "voltage too high or low" and config.ignore_tc_voltage_error == True:
+        if self.message == "voltage too high or low" and config.ignore_tc_voltage_error :
             self.ignore = True
 
     def map_message(self):
@@ -326,7 +326,7 @@ class Max31856(TempSensorReal):
         import adafruit_max31856
         self.thermocouple = adafruit_max31856.MAX31856(self.spi,self.cs,
                                         thermocouple_type=config.thermocouple_type)
-        if (config.ac_freq_50hz == True):
+        if (config.ac_freq_50hz ):
             self.thermocouple.noise_rejection = 50
         else:
             self.thermocouple.noise_rejection = 60
@@ -495,7 +495,7 @@ class Oven(threading.Thread):
     def kiln_must_catch_up(self):
         '''shift the whole schedule forward in time by one time_step
         to wait for the kiln to catch up'''
-        if config.kiln_must_catch_up == True:
+        if config.kiln_must_catch_up :
             temp = self.board.temp_sensor.temperature() + \
                 delta_to_c(config.thermocouple_offset)
             window = delta_to_c(config.pid_control_window)
@@ -704,7 +704,7 @@ class Oven(threading.Thread):
         '''one-shot check at startup: if the automatic restart state file
         says a firing was RUNNING but the file is older than the restart
         window, power failed mid-firing and came back too late to resume.'''
-        if not config.automatic_restarts == True:
+        if not config.automatic_restarts :
             return
         if not os.path.isfile(config.automatic_restart_state_file):
             return
@@ -790,13 +790,13 @@ class Oven(threading.Thread):
 
     def save_automatic_restart_state(self):
         # only save state if the feature is enabled
-        if not config.automatic_restarts == True:
+        if not config.automatic_restarts :
             return False
         self.save_state()
 
     def should_i_automatic_restart(self):
         # only automatic restart if the feature is enabled
-        if not config.automatic_restarts == True:
+        if not config.automatic_restarts :
             return False
         if self.state_file_is_old():
             duplog.info("automatic restart not possible. state file does not exist or is too old.")
@@ -875,7 +875,7 @@ class Oven(threading.Thread):
             if not self.restart_outage_checked:
                 self.restart_outage_checked = True
                 self.check_unresumed_outage()
-            if self.should_i_automatic_restart() == True:
+            if self.should_i_automatic_restart() :
                 self.automatic_restart()
             self.check_safety_detectors()
             self.check_cooled_safe()

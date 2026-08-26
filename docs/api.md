@@ -5,7 +5,7 @@ start a run
 skip the first part of a run
 restart the kiln on a specific profile and start at minute 60
 
-    curl -d '{"cmd":"run", "profile":"cone-05-long-bisque","startat":60}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8081/api
+    curl -d '{"cmd":"run", "profile":"cone-05-long-bisque","start_at":60}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8081/api
 
 stop a schedule
 
@@ -46,7 +46,7 @@ a unix epoch or an ISO 8601 string. returns the id of the scheduled run
 
 schedule a firing and skip the first 120 minutes of the schedule
 
-    curl -d '{"cmd":"schedule", "profile":"cone-05-long-bisque", "start_time":"2026-08-12T05:00", "startat":120}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8081/api
+    curl -d '{"cmd":"schedule", "profile":"cone-05-long-bisque", "start_time":"2026-08-12T05:00", "start_at":120}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8081/api
 
 list scheduled runs
 
