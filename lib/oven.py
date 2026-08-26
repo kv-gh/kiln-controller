@@ -28,7 +28,7 @@ class DupFilter(object):
 
 class Duplogger():
     def __init__(self):
-        self.log = logging.getLogger("%s.dupfree" % (__name__))
+        self.log = logging.getLogger(f"{__name__}.dupfree")
         dup_filter = DupFilter()
         self.log.addFilter(dup_filter)
     def logref(self):
@@ -65,7 +65,7 @@ class Board(object):
     runs.
     '''
     def __init__(self):
-        log.info("board: %s" % (self.name))
+        log.info(f"board: {self.name}")
         self.temp_sensor.start()
 
 class RealBoard(Board):
@@ -150,10 +150,10 @@ class TempSensorReal(TempSensor):
             return temp
         except ThermocoupleError as tce:
             if tce.ignore:
-                log.error("Problem reading temp (ignored) %s" % (tce.message))
+                log.error(f"Problem reading temp (ignored) {tce.message}")
                 self.status.good()
             else:
-                log.error("Problem reading temp %s" % (tce.message))
+                log.error(f"Problem reading temp {tce.message}")
                 self.status.bad()
         return None
 
@@ -438,7 +438,7 @@ class Oven(threading.Thread):
         # a new firing invalidates any cooled_safe alert armed by the
         # previous one: the kiln is about to get hot again
         self.cooled_safe_armed_for = None
-        log.info("Running schedule %s starting at %d minutes" % (profile.name,start_at))
+        log.info(f"Running schedule {profile.name} starting at {start_at} minutes")
         log.info("Starting")
 
     def abort_run(self, reason='stopped'):
@@ -612,7 +612,7 @@ class Oven(threading.Thread):
     def reset_if_schedule_ended(self):
         if self.runtime > self.totaltime:
             log.info("schedule ended, shutting down")
-            log.info("total cost = %s%.2f" % (config.currency_type,self.cost))
+            log.info(f"total cost = {config.currency_type}{self.cost:.2f}")
             self.abort_run(reason=END_COMPLETED)
 
     def check_safety_detectors(self):
@@ -805,17 +805,17 @@ class Oven(threading.Thread):
         with open(config.automatic_restart_state_file) as infile:
             d = json.load(infile)
         if d["state"] != "RUNNING":
-            duplog.info("automatic restart not possible. state = %s" % (d["state"]))
+            duplog.info(f"automatic restart not possible. state = {d[\"state\"]}")
             return False
         return True
 
     def automatic_restart(self):
         with open(config.automatic_restart_state_file) as infile: d = json.load(infile)
         start_at = d["runtime"]/60
-        filename = "%s.json" % (d["profile"])
+        filename = f"{d[\"profile\"]}.json"
         profile_path = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'storage','profiles',filename))
 
-        log.info("automatically restarting profile = %s at minute = %d" % (profile_path,start_at))
+        log.info(f"automatically restarting profile = {profile_path} at minute = {start_at}")
         with open(profile_path) as infile:
             profile_json = json.dumps(json.load(infile))
         profile = Profile(profile_json)
@@ -846,7 +846,7 @@ class Oven(threading.Thread):
         try:
             return self.alert_manager.emit(alert_id, context=context)
         except Exception as e:
-            log.error("could not emit alert %s: %s" % (alert_id, e))
+            log.error(f"could not emit alert {alert_id}: {e}")
             return False
 
     def run(self):
@@ -861,12 +861,12 @@ class Oven(threading.Thread):
                 # loop-termination sentinel, not an error
                 raise
             except Exception as e:
-                log.error("oven control loop error: %s" % (e))
+                log.error(f"oven control loop error: {e}")
                 try:
                     self.abort_run(reason='control loop error')
                 except Exception as abort_error:
                     log.error("could not reset oven after control loop "
-                              "error: %s" % (abort_error))
+                              f"error: {abort_error}")
                 time.sleep(1)
 
     def _run_once(self):
@@ -884,7 +884,7 @@ class Oven(threading.Thread):
         if self.state in ("PAUSED", "RUNNING") and self.profile is None:
             # inconsistent state, e.g. pause/resume requested while idle.
             # return to idle instead of crashing on the missing profile
-            log.error("%s state without a profile, returning to IDLE" % (self.state))
+            log.error(f"{self.state} state without a profile, returning to IDLE")
             self.reset()
             time.sleep(1)
             return
@@ -992,8 +992,7 @@ class SimulatedOven(Oven):
         if heat_on > 0:
             self.heat = heat_on
 
-        log.info("simulation: -> %dW heater: %.0f -> %dW oven: %.0f -> %dW env" % (int(self.p_heat * pid),
-            to_display(self.t_h),
+        log.info(f"simulation: -> {int(self.p_heat * pid)}W heater: %.0f -> {to_display(self.t_h}W oven: %.0f -> %dW env",
             int(self.p_ho),
             to_display(self.t),
             int(self.p_env)))
@@ -1002,9 +1001,7 @@ class SimulatedOven(Oven):
 
         try:
             ps = self.get_display_pidstats()
-            log.info("temp=%.2f, target=%.2f, error=%.2f, pid=%.2f, p=%.2f, i=%.2f, d=%.2f, heat_on=%.2f, heat_off=%.2f, run_time=%d, total_time=%d, time_left=%d" %
-                (ps['ispoint'],
-                ps['setpoint'],
+            log.info(f"temp=%.2f, target=%.2f, error=%.2f, pid=%.2f, p=%.2f, i=%.2f, d=%.2f, heat_on=%.2f, heat_off=%.2f, run_time={ps['ispoint']}, total_time={ps['setpoint'],
                 ps['err'],
                 ps['pid'],
                 ps['p'],
@@ -1014,7 +1011,7 @@ class SimulatedOven(Oven):
                 heat_off,
                 self.runtime,
                 self.totaltime,
-                time_left))
+                time_left}, time_left=%d")
         except KeyError:
             pass
 
@@ -1060,9 +1057,7 @@ class RealOven(Oven):
         time_left = self.totaltime - self.runtime
         try:
             ps = self.get_display_pidstats()
-            log.info("temp=%.2f, target=%.2f, error=%.2f, pid=%.2f, p=%.2f, i=%.2f, d=%.2f, heat_on=%.2f, heat_off=%.2f, run_time=%d, total_time=%d, time_left=%d" %
-                (ps['ispoint'],
-                ps['setpoint'],
+            log.info(f"temp=%.2f, target=%.2f, error=%.2f, pid=%.2f, p=%.2f, i=%.2f, d=%.2f, heat_on=%.2f, heat_off=%.2f, run_time={ps['ispoint']}, total_time={ps['setpoint'],
                 ps['err'],
                 ps['pid'],
                 ps['p'],
@@ -1072,7 +1067,7 @@ class RealOven(Oven):
                 heat_off,
                 self.runtime,
                 self.totaltime,
-                time_left))
+                time_left}, time_left=%d")
         except KeyError:
             pass
 
@@ -1200,7 +1195,7 @@ class PID():
             if config.throttle_below_temp and config.throttle_percent:
                 if setpoint <= to_c(config.throttle_below_temp):
                     output = config.throttle_percent/100
-                    log.info("max heating throttled at %d percent below %d degrees to prevent overshoot" % (config.throttle_percent,config.throttle_below_temp))
+                    log.info(f"max heating throttled at {config.throttle_percent} percent below {config.throttle_below_temp} degrees to prevent overshoot")
         else:
             ki = self.ki if self.ki else 1
             self.iterm += (error * timeDelta * (1/ki))

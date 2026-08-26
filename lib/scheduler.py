@@ -67,7 +67,7 @@ class Scheduler(object):
         with self.lock:
             self.schedules.append(entry)
             self.save()
-        log.info("scheduled profile %s to start at %d" % (profile, start_time))
+        log.info(f"scheduled profile {profile} to start at {start_time}")
         return entry
 
     def cancel(self, sid):
@@ -139,9 +139,9 @@ class Scheduler(object):
             try:
                 started = self.fire_callback(entry) or False
             except Exception as e:
-                log.error("error firing schedule %s: %s" % (entry['id'], e))
+                log.error(f"error firing schedule {entry['id']}: {e}")
         else:
-            log.error("no fire_callback set, not firing schedule %s" % entry['id'])
+            log.error(f"no fire_callback set, not firing schedule {entry}"['id'])
         if started:
             self.mark_fired(entry, fired=True, status='fired')
         elif entry.get('chain_after'):
@@ -155,7 +155,7 @@ class Scheduler(object):
                                              'schedule_id': entry.get('id'),
                                              'start_time': entry.get('start_time')})
                 except Exception as e:
-                    log.error("could not emit scheduled_run_missed: %s" % e)
+                    log.error(f"could not emit scheduled_run_missed: {e}")
 
     def fire_due(self):
         '''attempt to fire every scheduled run whose time has arrived'''
@@ -168,10 +168,10 @@ class Scheduler(object):
         a dedicated thread, not inside a gevent hub. the kiln-controller
         drives the scheduler with a yielding ticker instead (see
         kiln-controller.py).'''
-        log.info("scheduler started, checking every %d seconds" % self.poll_interval)
+        log.info(f"scheduler started, checking every {self.poll_interval} seconds")
         while True:
             try:
                 self.fire_due()
             except Exception as e:
-                log.error("scheduler error: %s" % e)
+                log.error(f"scheduler error: {e}")
             time.sleep(self.poll_interval)

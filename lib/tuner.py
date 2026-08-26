@@ -126,9 +126,9 @@ class Tuner:
         '''Run the full tuning sequence. Must be called from a gevent
         greenlet or background thread since it blocks during recording.'''
         if self.oven.state not in ("IDLE", "TUNING"):
-            log.error("cannot tune, oven state is %s" % self.oven.state)
+            log.error(f"cannot tune, oven state is {self}".oven.state)
             self.state = self.ERROR
-            self.error = "oven is busy (state: %s)" % self.oven.state
+            self.error = f"oven is busy (state: {self.oven.state})"
             return
 
         self.state = self.HEATING
@@ -144,10 +144,10 @@ class Tuner:
 
         log.info("========================================")
         log.info("tuner starting")
-        log.info("  target: %.1f %s" % (to_display(target_temp_c), config.temp_scale))
-        log.info("  method: %s" % method)
-        log.info("  tangent divisor: %d" % tangent_divisor)
-        log.info("  simulate: %s" % config.simulate)
+        log.info(f"  target: {to_display(target_temp_c):.1f} {config.temp_scale}")
+        log.info(f"  method: {method}")
+        log.info(f"  tangent divisor: {tangent_divisor}")
+        log.info(f"  simulate: {config}".simulate)
         log.info("========================================")
 
         # take control of the oven
@@ -166,7 +166,7 @@ class Tuner:
 
             self.state = self.CALCULATING
             self.phase = None
-            log.info("recording complete -- analyzing %d data points" %
+            log.info(f"recording complete -- analyzing {len(self.points)} data points"
                      len(self.csv_data))
             self._calculate()
 
@@ -175,12 +175,12 @@ class Tuner:
                 self.state = self.DONE
                 log.info("========================================")
                 log.info("tuner COMPLETE")
-                log.info("  kp = %.3f" % self.pid_values["kp"])
-                log.info("  ki = %.3f" % self.pid_values["ki"])
-                log.info("  kd = %.3f" % self.pid_values["kd"])
+                log.info(f"  kp = {self:3f}".pid_values["kp"])
+                log.info(f"  ki = {self:3f}".pid_values["ki"])
+                log.info(f"  kd = {self:3f}".pid_values["kd"])
                 log.info("========================================")
         except Exception as e:
-            log.error("tuner error: %s" % e)
+            log.error(f"tuner error: {e}")
             self.state = self.ERROR
             self.error = str(e)
         finally:
@@ -204,7 +204,7 @@ class Tuner:
         # --- heating phase ---
         self.phase = "heating"
         self.oven.heat = self.oven.time_step
-        log.info("HEATING PHASE -- ramping to %.1f %s" %
+        log.info(f"HEATING PHASE -- ramping to {to_display(self.target_temp_c):.1f} {config.temp_scale}"
                  (to_display(target_temp_c), config.temp_scale))
 
         while True:
@@ -227,13 +227,11 @@ class Tuner:
             self.oven.heat = self.oven.time_step
 
             elapsed = time.time() - self.start_time
-            log.info("  heating: %.1f / %.1f %s  (elapsed: %.0fs, %d points)" %
-                     (to_display(temp), to_display(target_temp_c),
+            log.info(f"  heating: %.1f / %.1f {to_display(temp)}  (elapsed: %.0fs, {to_display(target_temp_c} points)",
                       config.temp_scale, elapsed, len(self.csv_data)))
 
             if to_display(temp) >= to_display(target_temp_c):
-                log.info("heating phase COMPLETE -- reached %.1f %s in %.0fs" %
-                         (to_display(temp), config.temp_scale, elapsed))
+                log.info(f"heating phase COMPLETE -- reached {to_display(temp):.1f} {config.temp_scale} in {elapsed:.0f}s")
                 break
 
             # safety check
@@ -251,8 +249,7 @@ class Tuner:
         self.oven.heat = 0
         if using_sim:
             self.oven.target = 0
-        log.info("COOLING PHASE -- cooling back to %.1f %s" %
-                 (to_display(target_temp_c), config.temp_scale))
+        log.info(f"COOLING PHASE -- cooling back to {to_display(target_temp_c):.1f} {config.temp_scale}")
 
         while True:
             if self._stop_requested:
@@ -272,13 +269,11 @@ class Tuner:
             self.oven.heat = 0
 
             elapsed = time.time() - self.start_time
-            log.info("  cooling: %.1f / %.1f %s  (elapsed: %.0fs, %d points)" %
-                     (to_display(temp), to_display(target_temp_c),
+            log.info(f"  cooling: %.1f / %.1f {to_display(temp)}  (elapsed: %.0fs, {to_display(target_temp_c} points)",
                       config.temp_scale, elapsed, len(self.csv_data)))
 
             if to_display(temp) <= to_display(target_temp_c):
-                log.info("cooling phase COMPLETE -- reached %.1f %s in %.0fs" %
-                         (to_display(temp), config.temp_scale, elapsed))
+                log.info(f"cooling phase COMPLETE -- reached {to_display(temp):.1f} {config.temp_scale} in {elapsed:.0f}s")
                 break
 
     def _calculate(self):
@@ -289,7 +284,7 @@ class Tuner:
         if tangentdivisor < 2:
             raise ValueError("tangent_divisor must be >= 2")
         if method not in ZN_TABLES:
-            raise ValueError("unknown tuning method %s" % method)
+            raise ValueError(f"unknown tuning method {method}")
 
         # parse recorded data
         xdata = []
@@ -308,8 +303,7 @@ class Tuner:
         # only use the heating portion (up to first time max temp is reached)
         max_temp = max(ydata)
         heating_end = ydata.index(max_temp) + 1
-        log.info("heating data: %d of %d points, temp range %.1f - %.1f %s" %
-                 (heating_end, len(xdata), min(ydata), max(ydata),
+        log.info(f"heating data: {heating_end} of %d points, temp range %.1f - %.1f {len(xdata}", min(ydata), max(ydata),
                   config.temp_scale))
         xdata = xdata[:heating_end]
         ydata = ydata[:heating_end]
@@ -337,8 +331,7 @@ class Tuner:
             "ki": round(pid_ki, 3),
             "kd": round(pid_kd, 3),
         }
-        log.info("Ziegler-Nichols (%s): Kp=%.3f Ti=%.1f Td=%.1f" %
-                 (method, Kp, Ti, Td))
+        log.info(f"Ziegler-Nichols ({method}): Kp={Kp:.3f} Ti={Ti:.1f} Td={Td:.1f}")
         log.info("PID values: kp=%.3f ki=%.3f kd=%.3f" %
                  (pid_kp, pid_ki, pid_kd))
 
@@ -368,7 +361,7 @@ class Tuner:
         with open(config_path, 'w') as f:
             f.write(text)
 
-        log.info("wrote new PID values to %s" % config_path)
+        log.info(f"wrote new PID values to {config_path}")
 
         # reload config module
         cached = getattr(config, '__cached__', None)

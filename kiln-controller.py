@@ -58,11 +58,11 @@ alert_manager.add_sink(LogSink())
 try:
     alert_manager.add_sink(MqttSink(alert_store))
 except Exception as e:
-    log.error("could not start mqtt alert sink: %s" % e)
+    log.error(f"could not start mqtt alert sink: {e}")
 try:
     alert_manager.add_sink(WebhookSink(alert_store))
 except Exception as e:
-    log.error("could not start webhook alert sink: %s" % e)
+    log.error(f"could not start webhook alert sink: {e}")
 
 if config.simulate:
     log.info("this is a simulation")
@@ -155,7 +155,7 @@ def handle_api():
             start_at = bottle.request.json['start_at']
 
         if not start_run(wanted, start_at):
-            return { "success" : False, "error" : "profile %s not found" % wanted }
+            return { "success" : False, "error" : f"profile {wanted} not found" }
 
     # schedule a kiln run for a future date and time
     if bottle.request.json['cmd'] == 'schedule':
@@ -281,7 +281,7 @@ def _tar_add_path(tar, arc_name, path):
         with open(path, 'r', encoding='utf-8', errors='replace') as f:
             _tar_add_bytes(tar, arc_name, f.read())
     except Exception:
-        log.error("could not add %s to config dump" % path)
+        log.error(f"could not add {path} to config dump")
 
 def gather_log_lines():
     """
@@ -329,10 +329,10 @@ def find_profile(wanted):
             with open(path, 'r') as f:
                 profile = json.load(f)
         except Exception as e:
-            log.error("skipping unreadable profile %s: %s" % (path, e))
+            log.error(f"skipping unreadable profile {path}: {e}")
             continue
         if not isinstance(profile, dict):
-            log.error("skipping malformed profile %s" % (path))
+            log.error(f"skipping malformed profile {path}")
             continue
         if profile.get('name') == wanted:
             return profile
@@ -476,7 +476,7 @@ def api_schedule(json_body):
     if not wanted:
         return { "success" : False, "error" : "profile is required" }
     if find_profile(wanted) is None:
-        return { "success" : False, "error" : "profile %s not found" % wanted }
+        return { "success" : False, "error" : f"profile {wanted} not found" }
     try:
         epoch = parse_start_time(json_body.get('start_time'))
     except ValueError as e:
@@ -520,7 +520,7 @@ def api_cancel_schedule(json_body):
         return { "success" : False, "error" : "id is required" }
     if scheduler.cancel(sid):
         return { "success" : True }
-    return { "success" : False, "error" : "schedule %s not found" % sid }
+    return { "success" : False, "error" : f"schedule {sid} not found" }
 
 def api_list_schedules():
     """
@@ -725,12 +725,12 @@ def api_config_editor_save():
     try:
         save_config(body['config'])
     except SyntaxError as e:
-        log.error("config.py syntax error, save rejected: %s" % e)
-        return bottle.HTTPResponse(json.dumps({"success": False, "error": "syntax error: %s" % e}),
+        log.error(f"config.py syntax error, save rejected: {e}")
+        return bottle.HTTPResponse(json.dumps({"success": False, "error": f"syntax error: {e}"}),
                                    status=400,
                                    headers={'Content-Type': 'application/json'})
     except Exception as e:
-        log.error("config.py save/reload failed: %s" % e)
+        log.error(f"config.py save/reload failed: {e}")
         return bottle.HTTPResponse(json.dumps({"success": False, "error": str(e)}),
                                    status=400,
                                    headers={'Content-Type': 'application/json'})
@@ -805,9 +805,9 @@ def api_alerts_save():
         known_ids = {a['id'] for a in ALERTS}
         unknown = sorted(k for k in updates if k not in known_ids)
         if unknown:
-            log.error("alerts save rejected: unknown ids %s" % unknown)
+            log.error(f"alerts save rejected: unknown ids {unknown}")
             return bottle.HTTPResponse(json.dumps({"success": False,
-                                                   "error": "unknown alert ids: %s" % ', '.join(unknown)}),
+                                                   "error": f"unknown alert ids: {', '.join(unknown)}"}),
                                        status=400,
                                        headers={'Content-Type': 'application/json'})
     delivery_updates = body.get('delivery', {})
@@ -820,7 +820,7 @@ def api_alerts_save():
     try:
         clean_delivery, _ = validate_delivery(delivery_updates)
     except ValueError as e:
-        log.error("alerts save rejected: %s" % e)
+        log.error(f"alerts save rejected: {e}")
         return bottle.HTTPResponse(json.dumps({"success": False,
                                                "error": str(e)}),
                                    status=400,
@@ -865,7 +865,7 @@ def handle_tune():
     if cmd == 'start':
         if oven.state not in ("IDLE", "TUNING"):
             return {"success": False,
-                    "error": "cannot tune while a schedule is running (state: %s)" % oven.state}
+                    "error": f"cannot tune while a schedule is running (state: {oven.state})"}}
         # only reject while a tuning run is actually in flight; DONE and
         # ERROR are terminal states that must allow starting again
         # (previously anything but IDLE was rejected, which locked the
@@ -893,8 +893,7 @@ def handle_tune():
         if tangent_divisor < 2:
             return {"success": False, "error": "tangent_divisor must be >= 2"}
 
-        log.info("api tune start: target=%.1f method=%s tangent_divisor=%.0f" %
-                 (float(target_temp), method, tangent_divisor))
+        log.info(f"api tune start: target={float(target_temp):.1f} method={method} tangent_divisor={tangent_divisor:.0f}")
         threading.Thread(target=tuner.start, args=(target_c, method, tangent_divisor), daemon=True).start()
         return {"success": True}
 
@@ -953,7 +952,7 @@ def _github_headers(token=None):
     """
     headers = {"Accept": "application/vnd.github.v3+json", "User-Agent": "kiln-controller"}
     if token:
-        headers["Authorization"] = "token %s" % token
+        headers["Authorization"] = f"token {token}"
     return headers
 
 
@@ -983,7 +982,7 @@ def _raw_url(path):
     repo = _repo_owner_repo()
     if not repo:
         return None
-    return "https://raw.githubusercontent.com/%s/%s/%s" % (repo, config.kiln_profiles_branch, path)
+    return f"https://raw.githubusercontent.com/{repo}/{config.kiln_profiles_branch, path}/%s"
 
 
 def list_remote_profiles(force=False):
@@ -1040,15 +1039,15 @@ def list_remote_profiles(force=False):
             profiles.append({
                 "category": category,
                 "name": name,
-                "path": "%s/%s" % (category, local_name),
+                "path": f"{category}/{local_name}",
                 "tags": entry_tags,
                 "description": entry.get("description") or "",
                 "units": entry.get("units") or "",
                 "installed": os.path.isfile(os.path.join(profile_path, local_name)),
             })
     except Exception as e:
-        log.error("could not list community profiles: %s" % e)
-        return {"success": False, "error": "could not reach the kiln-profiles repo: %s" % e}
+        log.error(f"could not list community profiles: {e}")
+        return {"success": False, "error": f"could not reach the kiln-profiles repo: {e}"}
     data = {"success": True, "upload_enabled": bool(_repo_owner_repo()),
             "categories": categories, "tags": tags, "profiles": profiles}
     _remote_cache.update({"at": time.time(), "data": data})
@@ -1087,7 +1086,7 @@ def import_profile(profile):
     filepath = os.path.join(profile_path, profile["name"] + ".json")
     with open(filepath, "w+") as f:
         f.write(json.dumps(profile))
-    log.info("imported community profile %s" % profile["name"])
+    log.info(f"imported community profile {profile}"["name"])
     return filepath
 
 
@@ -1139,8 +1138,8 @@ def api_profiles_remote_import():
                                    status=400,
                                    headers={"Content-Type": "application/json"})
     except Exception as e:
-        log.error("could not import community profile: %s" % e)
-        return bottle.HTTPResponse(json.dumps({"success": False, "error": "could not download profile: %s" % e}),
+        log.error(f"could not import community profile: {e}")
+        return bottle.HTTPResponse(json.dumps({"success": False, "error": f"could not download profile: {e}"}),
                                    status=400,
                                    headers={"Content-Type": "application/json"})
     _remote_cache["data"] = None  # installed state changed
@@ -1202,11 +1201,11 @@ def api_profiles_remote_upload():
     try:
         pr_url, pr_number = share_profile_as_pr(profile, category, token)
     except Exception as e:
-        log.error("could not submit community profile: %s" % e)
-        return bottle.HTTPResponse(json.dumps({"success": False, "error": "share failed: %s" % e}),
+        log.error(f"could not submit community profile: {e}")
+        return bottle.HTTPResponse(json.dumps({"success": False, "error": f"share failed: {e}"}),
                                    status=400,
                                    headers={"Content-Type": "application/json"})
-    log.info("shared profile %s to %s as pull request #%s" % (name, category, pr_number))
+    log.info(f"shared profile {name} to {category, pr_number} as pull request #%s")
     _remote_cache["data"] = None  # local installed state changed
     return json.dumps({"success": True, "name": name, "category": category,
                        "pr_url": pr_url, "pr_number": pr_number})
@@ -1229,10 +1228,10 @@ def _ensure_fork(owner_repo, token):
     user = requests.get(_github_api_url("user"), headers=_github_headers(token), timeout=15)
     user.raise_for_status()
     username = user.json()["login"]
-    fork_repo = "%s/%s" % (username, owner_repo.split("/", 1)[1])
-    if requests.get(_github_api_url("repos/%s" % fork_repo), headers=_github_headers(token),
+    fork_repo = f"{username}/{owner_repo.split("/", 1}"[1])
+    if requests.get(_github_api_url(f"repos/{fork_repo}"), headers=_github_headers(token),
                     timeout=15).status_code == 404:
-        requests.post(_github_api_url("repos/%s/forks" % owner_repo),
+        requests.post(_github_api_url(f"repos/{owner_repo}/forks"),
                       json={"default_branch_only": True},
                       headers=_github_headers(token), timeout=15)
         # forking is asynchronous; poll until the fork is ready
@@ -1241,14 +1240,14 @@ def _ensure_fork(owner_repo, token):
             # yield to the gevent hub instead of blocking it: this runs in
             # a request greenlet and gevent is not monkey-patched here
             gevent.sleep(2)
-            if requests.get(_github_api_url("repos/%s" % fork_repo), headers=_github_headers(token),
+            if requests.get(_github_api_url(f"repos/{fork_repo}"), headers=_github_headers(token),
                             timeout=15).status_code == 200:
                 break
         else:
             raise RuntimeError("your fork did not finish syncing, try again in a moment")
     # best-effort: bring the fork's branch up to date with the upstream
     try:
-        requests.post(_github_api_url("repos/%s/merge-upstream" % fork_repo),
+        requests.post(_github_api_url(f"repos/{fork_repo}/merge-upstream"),
                       json={"branch": config.kiln_profiles_branch},
                       headers=_github_headers(token), timeout=15)
     except Exception:
@@ -1281,26 +1280,26 @@ def share_profile_as_pr(profile, category, token):
     fork_repo = _ensure_fork(owner_repo, token)
     username = fork_repo.split("/", 1)[0]
 
-    refs = requests.get(_github_api_url("repos/%s/git/ref/heads/%s" % (fork_repo, branch)),
+    refs = requests.get(_github_api_url(f"repos/{fork_repo}/git/ref/heads/{branch}"),
                         headers=_github_headers(token), timeout=15)
     refs.raise_for_status()
-    feature_branch = "kiln-share-%s" % re.sub(r"[^A-Za-z0-9_.-]", "-", name)
-    requests.post(_github_api_url("repos/%s/git/refs" % fork_repo),
-                  json={"ref": "refs/heads/%s" % feature_branch, "sha": refs.json()["object"]["sha"]},
+    feature_branch = f"kiln-share-{re.sub}"(r"[^A-Za-z0-9_.-]", "-", name)
+    requests.post(_github_api_url(f"repos/{fork_repo}/git/refs"),
+                  json={"ref": f"refs/heads/{feature_branch}", "sha": refs.json()["object"]["sha"]},
                   headers=_github_headers(token), timeout=15)
 
-    requests.put(_github_api_url("repos/%s/contents/%s/%s.json" % (fork_repo, category, name)),
+    requests.put(_github_api_url(f"repos/{fork_repo}/contents/{category, name}/%s.json"),
                  json={
-                     "message": "share %s" % name,
+                     "message": f"share {name}",
                      "content": base64.b64encode(json.dumps(profile).encode("utf-8")).decode("ascii"),
                      "branch": feature_branch,
                  },
                  headers=_github_headers(token), timeout=20)
 
-    pr = requests.post(_github_api_url("repos/%s/pulls" % owner_repo),
+    pr = requests.post(_github_api_url(f"repos/{owner_repo}/pulls"),
                        json={
-                           "title": "Add schedule %s (%s)" % (name, category),
-                           "head": "%s:%s" % (username, feature_branch),
+                           "title": f"Add schedule {name} ({category})",
+                           "head": f"{username}:{feature_branch}",
                            "base": branch,
                            "body": profile.get("description") or "Community kiln schedule.",
                        },
@@ -1323,7 +1322,7 @@ def send_static(filename):
         HTTPResponse: A static file response object that serves the requested file from
         the server's public root directory.
     """
-    log.debug("serving %s" % filename)
+    log.debug(f"serving {filename}")
     return bottle.static_file(filename, root=public_root)
 
 
@@ -1372,12 +1371,12 @@ def handle_control():
         try:
             message = web_socket.receive()
             if message:
-                log.info("Received (control): %s" % message)
+                log.info(f"Received (control): {message}")
                 try:
                     msgdict = json.loads(message)
                 except ValueError as e:
                     # one bad message must not kill the control greenlet
-                    log.error("ignoring malformed message: %s" % (e))
+                    log.error(f"ignoring malformed message: {e}")
                     msgdict = {}
                 if msgdict.get("cmd") == "RUN":
                     log.info("RUN command received")
@@ -1395,7 +1394,7 @@ def handle_control():
                             oven.run_profile(profile)
                             ovenWatcher.record(profile)
                         except Exception as e:
-                            log.error("could not start run from control socket: %s" % (e))
+                            log.error(f"could not start run from control socket: {e}")
                 elif msgdict.get("cmd") == "SIMULATE":
                     log.info("SIMULATE command received")
                 elif msgdict.get("cmd") == "STOP":
@@ -1434,7 +1433,7 @@ def handle_storage():
             message = web_socket.receive()
             if not message:
                 break
-            log.debug("websocket (storage) received: %s" % message)
+            log.debug(f"websocket (storage) received: {message}")
 
             try:
                 msg_dict = json.loads(message)
@@ -1461,7 +1460,7 @@ def handle_storage():
                         msg_dict["resp"] = "OK"
                     else:
                         msg_dict["resp"] = "FAIL"
-                    log.debug("websocket (storage) sent: %s" % message)
+                    log.debug(f"websocket (storage) sent: {message}")
 
                     web_socket.send(json.dumps(msg_dict))
                     web_socket.send(get_profiles())
@@ -1578,10 +1577,10 @@ def get_profiles():
             with open(path, 'r') as f:
                 profile = json.load(f)
         except Exception as e:
-            log.error("skipping unreadable profile %s: %s" % (path, e))
+            log.error(f"skipping unreadable profile {path}: {e}")
             continue
         if not isinstance(profile, dict):
-            log.error("skipping malformed profile %s" % (path))
+            log.error(f"skipping malformed profile {path}")
             continue
         profiles.append(profile)
     profiles = normalize_temp_units(profiles)
@@ -1612,12 +1611,12 @@ def save_profile(profile, force=False):
     filename = profile['name']+".json"
     filepath = os.path.join(profile_path, filename)
     if not force and os.path.exists(filepath):
-        log.error("Could not write, %s already exists" % filepath)
+        log.error(f"Could not write, {filepath} already exists")
         return False
     with open(filepath, 'w+') as f:
         f.write(profile_json)
         f.close()
-    log.info("Wrote %s" % filepath)
+    log.info(f"Wrote {filepath}")
     _remote_cache["data"] = None  # community "installed" state changed
     return True
 
@@ -1738,7 +1737,7 @@ def delete_profile(profile):
     filename = profile['name']+".json"
     filepath = os.path.join(profile_path, filename)
     os.remove(filepath)
-    log.info("Deleted %s" % filepath)
+    log.info(f"Deleted {filepath}")
     _remote_cache["data"] = None  # community "installed" state changed
     return True
 
@@ -1787,7 +1786,7 @@ def main():
     """
     ip = "0.0.0.0"
     port = config.listening_port
-    log.info("listening on %s:%d" % (ip, port))
+    log.info(f"listening on {ip}:{port}")
     alert_manager.emit('controller_restarted',
                        context={'simulate': bool(config.simulate),
                                 'port': port})
