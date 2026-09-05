@@ -211,12 +211,21 @@ def api_dump():
 
     This function creates an in-memory gzip-compressed tarball archive containing the
     specified files from the application's configuration, state, profiles, and logs. The
-    resulting tarball is returned as an HTTP response for the user to download.
+    resulting tarball is returned as an HTTP response for the user to download. Refused while a firing is active
+    so the journal replay can never interfere with kiln control.
 
     Returns:
         bottle.HTTPResponse: An HTTP response containing the gzip-compressed tarball as
         a binary file attachment for download.
     """
+    '''download config, state, all profiles, and logs as a tar.gz
+    archive. '''
+    if _firing_active():
+        return bottle.HTTPResponse(
+            json.dumps({"success": False,
+                        "error": "config dump is disabled while a firing is active"}),
+            status=409,
+            headers={'Content-Type': 'application/json'})
     out = io.BytesIO()
     with tarfile.open(fileobj=out, mode='w:gz') as tar:
         _tar_add_path(tar, 'config.py', config.__file__)
@@ -251,6 +260,12 @@ def profile_files():
                 if os.path.isfile(os.path.join(profile_path, f))]
     except Exception:
         return []
+
+def _firing_active():
+    '''True while a kiln firing is in progress or paused. the config dump
+    replays the journal, which can take minutes, so it is refused during
+    a firing to keep the oven loop free from interference.'''
+    return getattr(oven, 'state', None) in ('RUNNING', 'PAUSED')
 
 def _tar_add_bytes(tar, arc_name, text):
     """
@@ -291,15 +306,23 @@ def gather_log_lines():
     journal logs associated with the kiln-controller systemd service. The
     logs are decoded, split into individual lines, and unique lines are
     sorted before being returned. Non-decodable characters are replaced.
+    No timeout is applied -- the journal can legitimately take minutes to
+    replay after weeks of two-second oven samples -- which is why api_dump
+    refuses to run while a firing is active.
 
     Returns:
         list[str]: A sorted list of unique log lines. In case of an
         exception, an empty list is returned.
     """
+    '''gather the kiln log lines from the systemd journal for the
+    kiln-controller unit. returns a sorted, de-duplicated list of
+    lines. no timeout is applied -- the journal can legitimately take
+    minutes to replay after weeks of two-second oven samples -- which is
+    why api_dump refuses to run while a firing is active.'''
     try:
         out = subprocess.check_output(
-            "timeout 60 journalctl -u kiln-controller --no-pager 2>/dev/null",
-            shell=True, stderr=subprocess.DEVNULL, timeout=70)
+            "journalctl -u kiln-controller --no-pager 2>/dev/null",
+            shell=True, stderr=subprocess.DEVNULL)
     except Exception:
         return []
     return sorted(set(out.decode('utf-8', errors='replace').splitlines()))
