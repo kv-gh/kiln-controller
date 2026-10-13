@@ -2152,7 +2152,6 @@ function tune_window_change() {
 }
 
 function download_dump() {
-  showGrowl('<i class="bi bi-download"></i> Building config dump&hellip; this can take a few minutes.', 'success', 5000);
   fetch('/api/dump')
     .then(function(r) {
       if (r.ok) { return r.blob(); }

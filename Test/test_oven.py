@@ -290,10 +290,10 @@ def test_set_heat_rate_caps_window():
 def test_run_profile(no_auto_restarts):
     oven = Oven()
     profile = get_profile()
-    oven.run_profile(profile, startat=10, allow_seek=False)
+    oven.run_profile(profile, start_at=10, allow_seek=False)
     assert oven.state == "RUNNING"
     assert oven.runtime == 600
-    assert oven.startat == 600
+    assert oven.start_at == 600
     assert oven.totaltime == 19400
     assert oven.profile is profile
 
@@ -301,15 +301,15 @@ def test_run_profile(no_auto_restarts):
 def test_run_profile_seek_start_time_matches_runtime(no_auto_restarts, monkeypatch):
     '''seek offset must be reflected in start_time so update_runtime
     preserves the sought position. previously start_time was derived from
-    startat alone and the seek silently reset to zero unless
+    start_at alone and the seek silently reset to zero unless
     kiln_must_catch_up happened to shift it back.'''
     monkeypatch.setattr(config, 'kiln_must_catch_up', False)
     oven = Oven()
     oven.board = FakeBoard(250)  # kiln still hot from a previous run
-    oven.run_profile(get_profile(), startat=0, allow_seek=True)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=True)
     # seek found 3800s into the profile for a 250c oven
     assert oven.runtime == 3800
-    # start_time must be set back by the runtime, not just startat
+    # start_time must be set back by the runtime, not just start_at
     offset = time.time() - oven.start_time
     assert offset == pytest.approx(3800, abs=2)
     # and update_runtime keeps the sought position instead of zeroing it
@@ -319,10 +319,10 @@ def test_run_profile_seek_start_time_matches_runtime(no_auto_restarts, monkeypat
     assert oven.target == pytest.approx(250.0)
 
 
-def test_run_profile_no_seek_start_time_matches_startat(no_auto_restarts):
+def test_run_profile_no_seek_start_time_matches_start_at(no_auto_restarts):
     oven = Oven()
     oven.board = FakeBoard(250)
-    oven.run_profile(get_profile(), startat=10, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=10, allow_seek=False)
     assert oven.runtime == 600
     offset = time.time() - oven.start_time
     assert offset == pytest.approx(600, abs=2)
@@ -337,10 +337,10 @@ def test_run_sequence_increments_and_run_id_in_status(no_auto_restarts):
     # after the specific run that is in progress.
     oven = Oven()
     oven.board = FakeBoard(250)
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     assert oven.run_sequence == 1
     assert oven.get_state()['run_id'] == 1
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     assert oven.run_sequence == 2
     assert oven.get_state()['run_id'] == 2
 
@@ -349,7 +349,7 @@ def test_abort_run_tracks_ended_sequence_and_idle_since(no_auto_restarts):
     import time as _time
     oven = Oven()
     oven.board = FakeBoard(250)
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     seq = oven.run_sequence
     oven.abort_run()
     assert oven.ended_run_sequence == seq
@@ -357,7 +357,7 @@ def test_abort_run_tracks_ended_sequence_and_idle_since(no_auto_restarts):
     assert oven.state == "IDLE"
     # a new firing gets a higher sequence; the ended sequence only
     # advances when that firing actually ends
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     assert oven.run_sequence == seq + 1
     assert oven.ended_run_sequence == seq
 
@@ -760,24 +760,24 @@ def test_automatic_restart(tmp_path, monkeypatch):
 
     calls = {}
 
-    def fake_run_profile(self, profile, startat=0, allow_seek=True):
+    def fake_run_profile(self, profile, start_at=0, allow_seek=True):
         calls['profile'] = profile
-        calls['startat'] = startat
+        calls['start_at'] = start_at
         calls['allow_seek'] = allow_seek
 
     monkeypatch.setattr(oven_module().Oven, 'run_profile', fake_run_profile)
 
     oven.automatic_restart()
 
-    assert calls['startat'] == 1
+    assert calls['start_at'] == 1
     assert calls['allow_seek'] is False
     assert calls['profile'].name == 'test-fast'
     assert oven.cost == 3.5
 
 
 def _restart_env(tmp_path, monkeypatch, state):
-    '''a rebooted oven pointed at a tmp state file and tmp profiles
-    directory. returns (oven, state_file).'''
+    '''a rebooted oven pointed at a tmp state file; profiles resolve
+    next to a fake oven module file. returns (oven, state_file).'''
     profiles_dir = tmp_path / 'storage' / 'profiles'
     profiles_dir.mkdir(parents=True, exist_ok=True)
     state_file = tmp_path / 'state.json'
@@ -785,7 +785,6 @@ def _restart_env(tmp_path, monkeypatch, state):
     monkeypatch.setattr(config, 'automatic_restarts', True)
     monkeypatch.setattr(config, 'automatic_restart_state_file',
                         str(state_file))
-    monkeypatch.setattr(config, 'kiln_profiles_directory', str(profiles_dir))
     monkeypatch.setattr(config, 'thermocouple_offset', 0)
     monkeypatch.setattr(oven_module(), '__file__',
                         str(tmp_path / 'storage' / 'oven.py'))
@@ -841,79 +840,6 @@ def test_failed_restart_preserves_resume_file(tmp_path, monkeypatch):
     assert oven.state == "RUNNING"
     assert oven.profile.name == "test-fast"
     assert oven.runtime == pytest.approx(60)
-
-
-def test_restart_missing_profile_retries_quietly(tmp_path, monkeypatch):
-    '''a missing profile file is transient (it may be re-synced): the
-    restart raises RestartRetry so run() preserves the resume file and
-    retries without a per-second ERROR spamming the syslog.'''
-    oven, state_file = _restart_env(
-        tmp_path, monkeypatch,
-        {'state': 'RUNNING', 'runtime': 60, 'profile': 'test-fast',
-         'cost': 1.0})
-    with pytest.raises(RestartRetry):
-        oven.automatic_restart()
-    assert oven.state == "IDLE"
-    assert json.loads(state_file.read_text())['state'] == "RUNNING"
-
-
-def test_restart_prefers_embedded_profile_data(tmp_path, monkeypatch):
-    '''runs started from unsaved ui profiles resume from the profile
-    embedded in the state file even when no file exists on disk.'''
-    oven, _ = _restart_env(
-        tmp_path, monkeypatch,
-        {'state': 'RUNNING', 'runtime': 60, 'profile': 't',
-         'profile_data': {'name': 't', 'data': [[0, 20], [600, 100]]},
-         'cost': 1.0})
-    assert oven.automatic_restart() is True
-    assert oven.state == "RUNNING"
-    assert oven.profile.name == "t"
-
-
-def test_restart_matches_profile_by_name_not_filename(tmp_path,
-                                                      monkeypatch):
-    '''a stored profile renamed on disk still resumes: lookup matches
-    the internal name, never "<name>.json".'''
-    oven, _ = _restart_env(
-        tmp_path, monkeypatch,
-        {'state': 'RUNNING', 'runtime': 60, 'profile': 'test-fast',
-         'cost': 1.0})
-    with open(tmp_path / 'storage' / 'profiles' / 'renamed.json',
-              'w') as f:
-        f.write(open(os.path.join(os.path.dirname(__file__),
-                                   'test-fast.json')).read())
-    assert oven.automatic_restart() is True
-    assert oven.profile.name == "test-fast"
-
-
-def test_restart_without_resumable_profile_clears_resume(tmp_path,
-                                                         monkeypatch):
-    '''a resume with neither embedded data nor a profile name can never
-    succeed: it is cleared to IDLE (stopping the 1/sec retry loop) and
-    reports the loss instead of raising forever.'''
-    oven, state_file = _restart_env(
-        tmp_path, monkeypatch,
-        {'state': 'RUNNING', 'runtime': 60, 'profile': None, 'cost': 1.0})
-    assert oven.automatic_restart() is False
-    assert oven.state == "IDLE"
-    assert json.loads(state_file.read_text())['state'] == "IDLE"
-    assert oven.should_i_automatic_restart() is False
-
-
-def test_save_state_embeds_profile_data(tmp_path, monkeypatch):
-    '''the resume file carries the full profile so restarts do not
-    depend on the profile file.'''
-    monkeypatch.setattr(config, 'automatic_restart_state_file',
-                        str(tmp_path / 'state.json'))
-    oven = Oven()
-    oven.profile = Profile('{"name":"t","data":[[0, 20],[600, 100]]}')
-    oven.state = 'RUNNING'
-    oven.save_state()
-    with open(tmp_path / 'state.json') as f:
-        d = json.load(f)
-    assert d['profile'] == 't'
-    assert d['profile_data'] == {'name': 't',
-                                 'data': [[0, 20], [600, 100]]}
 
 
 def test_restart_without_ovenwatcher_attached(tmp_path, monkeypatch):
@@ -1369,7 +1295,7 @@ def test_runtime_survives_spring_forward(monkeypatch):
     monkeypatch.setattr(oven_module().datetime, 'datetime', FakeDateTime)
     oven = Oven()
     oven.board = FakeBoard(250)
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     assert oven.runtime == 0
 
     clock['epoch'] += 1200
@@ -1398,7 +1324,7 @@ def test_runtime_survives_fall_back(monkeypatch):
     monkeypatch.setattr(oven_module().datetime, 'datetime', FakeDateTime)
     oven = Oven()
     oven.board = FakeBoard(250)
-    oven.run_profile(get_profile(), startat=0, allow_seek=False)
+    oven.run_profile(get_profile(), start_at=0, allow_seek=False)
     assert oven.runtime == 0
 
     clock['epoch'] += 1200

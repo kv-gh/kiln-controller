@@ -5,7 +5,7 @@ Turns a Raspberry Pi into an inexpensive, web-enabled kiln controller.
 
 ## Features
 
-  * supports [many boards](docs/supported-boards.md) into addition to raspberry pi
+  * supports [many boards](docs/supported-boards.md) in addition to raspberry pi
   * supports Adafruit MAX31856 and MAX31855 thermocouple boards
   * support for K, J, N, R, S, T, E, or B type thermocouples
   * easy to create new kiln schedules and edit / modify existing schedules
@@ -84,6 +84,8 @@ Download [Raspberry PI OS](https://www.raspberrypi.org/software/). Use Rasberry 
     $ sudo apt-get dist-upgrade
     $ git clone https://github.com/jbruce12000/kiln-controller
     $ cd kiln-controller
+    $ cp config.py.EXAMPLE config.py
+    $ cp -r storage.EXAMPLE storage
     $ python3 -m venv venv
     $ source venv/bin/activate
     $ pip install -r requirements.txt
@@ -100,7 +102,18 @@ If you're done playing around with simulations and want to deploy the code on a 
 
 ## Configuration
 
-All parameters are defined in config.py. You need to read through config.py carefully to understand each setting. Here are some of the most important settings:
+### Initial Setup
+
+Create your local configuration and storage directories from the provided templates:
+
+    $ cp config.py.EXAMPLE config.py
+    $ cp -r storage.EXAMPLE storage
+
+Both `config.py` and `storage/` are in .gitignore to prevent your personal settings and firing profiles from being committed to version control.
+
+### Configuration File
+
+Edit config.py with your hardware-specific settings. You need to read through config.py carefully to understand each setting. Here are some of the most important settings:
 
 | Variable | Default | Description |
 | -------- | ------- | ----------- |

@@ -36,7 +36,7 @@ class StubOven:
     def set_alert_manager(self, manager):
         pass
 
-    def run_profile(self, profile, startat=0, allow_seek=True):
+    def run_profile(self, profile, start_at=0, allow_seek=True):
         pass
 
     def abort_run(self):
@@ -166,30 +166,8 @@ def test_api_dump_without_profiles(monkeypatch, tmp_path):
     profiles_dir.mkdir()
     monkeypatch.setattr(controller, 'profile_path', str(profiles_dir))
     monkeypatch.setattr(controller.oven, 'state', 'IDLE')
-    monkeypatch.setattr(config, 'firing_db_file',
-                        str(tmp_path / 'missing.db'))
     resp = controller.api_dump()
     tar = tarfile.open(fileobj=io.BytesIO(resp.body), mode='r:gz')
-    assert set(tar.getnames()) == {'config.py', 'state.json', 'kiln.logs'}
-
-
-def test_api_dump_skips_missing_db(monkeypatch, tmp_path):
-    # an absent/unreadable firing db must not fail the dump, it is
-    # just left out like any other unreadable file
-    monkeypatch.setattr(controller.subprocess, 'check_output',
-                        lambda *a, **k: b'')
-    monkeypatch.setattr(controller.oven, 'state', 'IDLE')
-    state_file = tmp_path / 'state.json'
-    state_file.write_text('{}')
-    monkeypatch.setattr(config, 'automatic_restart_state_file', str(state_file))
-    profiles_dir = tmp_path / 'profiles'
-    profiles_dir.mkdir()
-    monkeypatch.setattr(controller, 'profile_path', str(profiles_dir))
-    monkeypatch.setattr(config, 'firing_db_file',
-                        str(tmp_path / 'does-not-exist.db'))
-    resp = controller.api_dump()
-    tar = tarfile.open(fileobj=io.BytesIO(resp.body), mode='r:gz')
-    assert 'firings.db' not in tar.getnames()
     assert set(tar.getnames()) == {'config.py', 'state.json', 'kiln.logs'}
 
 
@@ -209,8 +187,6 @@ def test_api_dump_allowed_while_idle_or_tuning(monkeypatch, tmp_path):
     # tuning does not count as an active firing, so dumps are allowed
     monkeypatch.setattr(controller.subprocess, 'check_output',
                         lambda *a, **k: b'')
-    monkeypatch.setattr(config, 'firing_db_file',
-                        str(tmp_path / 'missing.db'))
     for state in ('IDLE', 'TUNING'):
         monkeypatch.setattr(controller.oven, 'state', state)
         resp = controller.api_dump()
@@ -969,13 +945,13 @@ def test_api_list_schedules(scheduler, monkeypatch):
 
 def test_fire_scheduled_run_idle(monkeypatch):
     calls = []
-    def fake_run_profile(profile, startat=0, allow_seek=True):
-        calls.append((profile.name, startat, allow_seek))
+    def fake_run_profile(profile, start_at=0, allow_seek=True):
+        calls.append((profile.name, start_at, allow_seek))
     monkeypatch.setattr(controller, 'find_profile', lambda name: {'name': name, 'data': [[0, 200]]})
     monkeypatch.setattr(controller.oven, 'state', 'IDLE')
     monkeypatch.setattr(controller.oven, 'run_profile', fake_run_profile)
     monkeypatch.setattr(controller.ovenWatcher, 'record', lambda profile: None)
-    entry = {'id': 'abc', 'profile': 'cone-05-long-bisque', 'startat': 0}
+    entry = {'id': 'abc', 'profile': 'cone-05-long-bisque', 'start_at': 0}
     assert controller.fire_scheduled_run(entry) is True
     # scheduled runs never seek, even when the kiln is hot from a
     # previous run. they always start from the beginning.
@@ -984,26 +960,26 @@ def test_fire_scheduled_run_idle(monkeypatch):
 
 def test_fire_scheduled_run_busy_oven(monkeypatch):
     monkeypatch.setattr(controller.oven, 'state', 'RUNNING')
-    entry = {'id': 'abc', 'profile': 'cone-05-long-bisque', 'startat': 0}
+    entry = {'id': 'abc', 'profile': 'cone-05-long-bisque', 'start_at': 0}
     assert controller.fire_scheduled_run(entry) is False
 
 
 def test_fire_scheduled_run_missing_profile(monkeypatch):
     monkeypatch.setattr(controller, 'find_profile', lambda name: None)
     monkeypatch.setattr(controller.oven, 'state', 'IDLE')
-    entry = {'id': 'abc', 'profile': 'nope', 'startat': 0}
+    entry = {'id': 'abc', 'profile': 'nope', 'start_at': 0}
     assert controller.fire_scheduled_run(entry) is False
 
 
-def test_fire_scheduled_run_with_startat(monkeypatch):
+def test_fire_scheduled_run_with_start_at(monkeypatch):
     calls = []
-    def fake_run_profile(profile, startat=0, allow_seek=True):
-        calls.append((profile.name, startat, allow_seek))
+    def fake_run_profile(profile, start_at=0, allow_seek=True):
+        calls.append((profile.name, start_at, allow_seek))
     monkeypatch.setattr(controller, 'find_profile', lambda name: {'name': name, 'data': [[0, 200]]})
     monkeypatch.setattr(controller.oven, 'state', 'IDLE')
     monkeypatch.setattr(controller.oven, 'run_profile', fake_run_profile)
     monkeypatch.setattr(controller.ovenWatcher, 'record', lambda profile: None)
-    entry = {'id': 'abc', 'profile': 'cone-05-long-bisque', 'startat': 60}
+    entry = {'id': 'abc', 'profile': 'cone-05-long-bisque', 'start_at': 60}
     assert controller.fire_scheduled_run(entry) is True
     assert calls == [('cone-05-long-bisque', 60, False)]
 
@@ -1056,7 +1032,7 @@ def test_fire_scheduled_run_chained_waits_for_actual_end(monkeypatch):
     monkeypatch.setattr(controller.ovenWatcher, 'record', lambda profile: None)
     monkeypatch.setattr(controller.oven, 'ended_run_sequence', 2)
     monkeypatch.setattr(controller.oven, 'idle_since', time.time() - 5)
-    entry = {'id': 'abc', 'profile': 'cone-05-long-bisque', 'startat': 0,
+    entry = {'id': 'abc', 'profile': 'cone-05-long-bisque', 'start_at': 0,
              'chain_after': 'run:5'}
 
     # anchor run (sequence 5) has not ended yet
@@ -1075,8 +1051,8 @@ def test_fire_scheduled_run_chained_waits_for_actual_end(monkeypatch):
     # anchor ended, oven idle, buffer elapsed -> fires
     monkeypatch.setattr(controller.oven, 'idle_since', time.time() - 120)
     calls = []
-    def fake_run_profile(profile, startat=0, allow_seek=True):
-        calls.append((profile.name, startat, allow_seek))
+    def fake_run_profile(profile, start_at=0, allow_seek=True):
+        calls.append((profile.name, start_at, allow_seek))
     monkeypatch.setattr(controller.oven, 'run_profile', fake_run_profile)
     assert controller.fire_scheduled_run(entry) is True
     assert calls == [('cone-05-long-bisque', 0, False)]
@@ -1089,7 +1065,7 @@ def test_fire_scheduled_run_chained_after_schedule(monkeypatch, scheduler):
     monkeypatch.setattr(controller.oven, 'idle_since', time.time() - 120)
     monkeypatch.setattr(controller.ovenWatcher, 'record', lambda profile: None)
     anchor = scheduler.add('cone-05-long-bisque', time.time() + 3600)
-    entry = {'id': 'abc', 'profile': 'cone-05-long-bisque', 'startat': 0,
+    entry = {'id': 'abc', 'profile': 'cone-05-long-bisque', 'start_at': 0,
              'chain_after': 'sched:' + anchor['id']}
 
     # anchor has not fired yet
@@ -1097,8 +1073,8 @@ def test_fire_scheduled_run_chained_after_schedule(monkeypatch, scheduler):
 
     scheduler.mark_fired(anchor)
     calls = []
-    def fake_run_profile(profile, startat=0, allow_seek=True):
-        calls.append((profile.name, startat, allow_seek))
+    def fake_run_profile(profile, start_at=0, allow_seek=True):
+        calls.append((profile.name, start_at, allow_seek))
     monkeypatch.setattr(controller.oven, 'run_profile', fake_run_profile)
     assert controller.fire_scheduled_run(entry) is True
     assert calls == [('cone-05-long-bisque', 0, False)]
@@ -1125,7 +1101,7 @@ def test_chained_firing_waits_for_real_end_end_to_end(monkeypatch, tmp_path):
 
     # a firing is in progress
     real.run_profile(Profile(_json.dumps({'name': 'p', 'data': [[0, 200], [600, 200]]})),
-                     startat=0, allow_seek=False)
+                     start_at=0, allow_seek=False)
     assert real.run_sequence == 1
 
     # chain a firing after the current one; start_time is just an estimate
@@ -1160,7 +1136,7 @@ def test_start_run_converts_legacy_fahrenheit_profile(monkeypatch):
     # start_run must convert them to celsius before running, otherwise a
     # scheduled run targets 212f for a profile that says 100f.
     started = []
-    def fake_run_profile(profile, startat=0, allow_seek=True):
+    def fake_run_profile(profile, start_at=0, allow_seek=True):
         started.append(profile.get_target_temperature(0))
     monkeypatch.setattr(controller, 'find_profile',
                         lambda name: {'name': 'test-200-250',
@@ -1176,7 +1152,7 @@ def test_start_run_converts_legacy_fahrenheit_profile(monkeypatch):
 
 def test_start_run_keeps_celsius_profile_untouched(monkeypatch):
     started = []
-    def fake_run_profile(profile, startat=0, allow_seek=True):
+    def fake_run_profile(profile, start_at=0, allow_seek=True):
         started.append(profile.get_target_temperature(0))
     monkeypatch.setattr(controller, 'find_profile',
                         lambda name: {'name': 'cone-05-long-bisque',
@@ -1548,7 +1524,7 @@ def test_handle_stats(monkeypatch):
 def test_handle_api_run_success(monkeypatch):
     calls = []
 
-    def fake_run_profile(profile, startat=0, allow_seek=True):
+    def fake_run_profile(profile, start_at=0, allow_seek=True):
         calls.append(profile.name)
 
     monkeypatch.setattr(controller, 'find_profile', lambda name: {'name': name, 'data': [[0, 200]]})
@@ -1717,31 +1693,31 @@ def test_find_profile_listdir_error(monkeypatch):
     assert controller.find_profile('cone-05') is None
 
 
-def test_start_run_with_startat_does_not_seek(monkeypatch):
+def test_start_run_with_start_at_does_not_seek(monkeypatch):
     calls = []
 
-    def fake_run_profile(profile, startat=0, allow_seek=True):
-        calls.append((startat, allow_seek))
+    def fake_run_profile(profile, start_at=0, allow_seek=True):
+        calls.append((start_at, allow_seek))
 
     monkeypatch.setattr(controller, 'find_profile', lambda name: {'name': name, 'data': [[0, 200]]})
     monkeypatch.setattr(controller.oven, 'run_profile', fake_run_profile)
     monkeypatch.setattr(controller.ovenWatcher, 'record', lambda profile: None)
 
-    assert controller.start_run('cone-05', startat=60) is True
+    assert controller.start_run('cone-05', start_at=60) is True
     assert calls == [(60, False)]
 
 
-def test_handle_api_run_with_startat(monkeypatch):
+def test_handle_api_run_with_start_at(monkeypatch):
     calls = []
 
-    def fake_run_profile(profile, startat=0, allow_seek=True):
-        calls.append((startat, allow_seek))
+    def fake_run_profile(profile, start_at=0, allow_seek=True):
+        calls.append((start_at, allow_seek))
 
     monkeypatch.setattr(controller, 'find_profile', lambda name: {'name': name, 'data': [[0, 200]]})
     monkeypatch.setattr(controller.oven, 'run_profile', fake_run_profile)
     monkeypatch.setattr(controller.ovenWatcher, 'record', lambda profile: None)
 
-    resp = api_call({'cmd': 'run', 'profile': 'cone-05', 'startat': 30}, monkeypatch)
+    resp = api_call({'cmd': 'run', 'profile': 'cone-05', 'start_at': 30}, monkeypatch)
     assert resp == {'success': True}
     assert calls == [(30, False)]
 

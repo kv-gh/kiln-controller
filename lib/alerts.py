@@ -138,10 +138,10 @@ def validate_delivery(updates, strict=True):
             if isinstance(value, bool):
                 clean[key] = value
             elif strict:
-                raise ValueError("%s must be true or false" % key)
+                raise ValueError(f"{key} must be true or false")
         elif key in DELIVERY_STRING_KEYS:
             if not isinstance(value, str):
-                raise ValueError("%s must be a string" % key)
+                raise ValueError(f"{key} must be a string")
             value = value.strip()
             if key == 'mqtt_topic' and not value:
                 raise ValueError("mqtt_topic cannot be empty")
@@ -153,7 +153,7 @@ def validate_delivery(updates, strict=True):
         else:
             ignored.append(key)
             if strict:
-                raise ValueError("unknown delivery setting: %s" % key)
+                raise ValueError(f"unknown delivery setting: {key}")
     return clean, ignored
 
 
@@ -237,7 +237,7 @@ class AlertStore(object):
         with self.lock:
             self.delivery.update(clean)
             self.save()
-        log.info("alert delivery updated: %s" % clean)
+        log.info(f"alert delivery updated: {clean}")
         return None
 
     def set_enabled(self, alert_id, value):
@@ -249,7 +249,7 @@ class AlertStore(object):
                 return True
             self.enabled[alert_id] = bool(value)
             self.save()
-        log.info("alert %s %s" % (alert_id, 'enabled' if value else 'disabled'))
+        log.info(f"alert {alert_id} {'enabled' if value else 'disabled'}")
         return True
 
 
@@ -305,11 +305,11 @@ class AlertManager(object):
         unknown id).'''
         definition = ALERT_DEFS.get(alert_id)
         if definition is None:
-            log.error("alert id '%s' is not in the registry" % alert_id)
+            log.error(f"alert id \'{alert_id}\' is not in the registry")
             return False
 
         if not self.store.enabled.get(alert_id, True):
-            log.debug("alert %s suppressed: disabled in the web ui" % alert_id)
+            log.debug(f"alert {alert_id} suppressed: disabled in the web ui")
             return False
 
         if alert_id not in EVENT_ALERTS:
@@ -317,7 +317,7 @@ class AlertManager(object):
                 now = time.monotonic()
                 last = self._last_emit.get(alert_id)
                 if last is not None and now - last < self.condition_cooldown:
-                    log.debug("alert %s suppressed: cooling down" % alert_id)
+                    log.debug(f"alert {alert_id} suppressed: cooling down")
                     return False
                 self._last_emit[alert_id] = now
 
@@ -329,8 +329,7 @@ class AlertManager(object):
                              definition['criticality'], payload)
                 delivered = True
             except Exception as e:
-                log.error("alert sink %s failed for %s: %s"
-                          % (sink, alert_id, e))
+                log.error(f"alert sink {sink} failed for {alert_id, e}: %s")
         return delivered
 
 
@@ -370,8 +369,7 @@ class WebhookSink(object):
             return
         url = (settings.get('webhook_url') or '').strip()
         if not url:
-            log.debug("webhook sink has no url configured, skipping %s"
-                      % alert_id)
+            log.debug(f"webhook sink has no url configured, skipping {alert_id}")
             return
         payload = alert_payload(alert_id, label, criticality, context)
         if self.async_deliver:
@@ -386,13 +384,11 @@ class WebhookSink(object):
             response = self.poster(url, payload, self.timeout)
             status = getattr(response, 'status_code', 0)
             if status >= 300:
-                log.error("alert webhook post to %s failed: HTTP %s %s"
-                          % (url, status,
-                             getattr(response, 'text', '')[:200]))
+                log.error(f"alert webhook post to {url} failed: HTTP {status} {getattr(response, 'text', '')[:200]}")
             else:
-                log.info("alert %s posted to webhook" % payload['alert_id'])
+                log.info(f"alert {payload["alert_id"]} posted to webhook")
         except Exception as e:
-            log.error("alert webhook post to %s failed: %s" % (url, e))
+            log.error(f"alert webhook post to {url} failed: {e}")
 
     def _requests_post(self, url, payload, timeout):
         import requests
@@ -444,11 +440,11 @@ class MqttSink(object):
                     out_cls = MqttOut
                 self.out = out_cls(topic=topic)
                 self.built_topic = topic
-                log.info("alert mqtt sink ready on topic '%s'" % topic)
+                log.info(f"alert mqtt sink ready on topic \'{topic}\'")
             except Exception as e:
                 self.out = None
                 self.built_topic = None
-                log.error("could not build alert mqtt sink: %s" % e)
+                log.error(f"could not build alert mqtt sink: {e}")
             finally:
                 self.building = False
 

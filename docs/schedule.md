@@ -17,7 +17,7 @@ Schedule a firing of a profile at a specific time. `start_time` can be a unix ep
 
 Schedule a firing and skip the first two hours [120 minutes] of the schedule (e.g. candling):
 
-    curl -d '{"cmd":"schedule", "profile":"cone-05-long-bisque", "start_time":"2026-08-12T05:00", "startat":120}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8081/api
+    curl -d '{"cmd":"schedule", "profile":"cone-05-long-bisque", "start_time":"2026-08-12T05:00", "start_at":120}' -H "Content-Type: application/json" -X POST http://0.0.0.0:8081/api
 
 List scheduled runs:
 

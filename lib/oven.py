@@ -34,7 +34,7 @@ class RestartRetry(Exception):
 
 class Duplogger():
     def __init__(self):
-        self.log = logging.getLogger("%s.dupfree" % (__name__))
+        self.log = logging.getLogger(f"{__name__}.dupfree")
         dup_filter = DupFilter()
         self.log.addFilter(dup_filter)
     def logref(self):
@@ -71,7 +71,7 @@ class Board(object):
     runs.
     '''
     def __init__(self):
-        log.info("board: %s" % (self.name))
+        log.info(f"board: {self.name}")
         self.temp_sensor.start()
 
 class RealBoard(Board):
@@ -161,13 +161,13 @@ class TempSensorReal(TempSensor):
             else:
                 detail = tce.message
             if tce.ignore:
-                log.error("Problem reading temp (ignored) %s" % (detail))
+                log.error(f"Problem reading temp (ignored) {detail}")
                 self.status.good()
             else:
                 # exc_info logs the traceback including the chained
                 # underlying RuntimeError, so "unknown" errors can be
                 # diagnosed from the log.
-                log.error("Problem reading temp %s" % (detail), exc_info=True)
+                log.error(f"Problem reading temp {detail}", exc_info=True)
                 self.status.bad()
         return None
 
@@ -278,25 +278,25 @@ class ThermocoupleError(Exception):
         super().__init__(self.message)
 
     def set_ignore(self):
-        if self.message == "not connected" and config.ignore_tc_lost_connection == True:
+        if self.message == "not connected" and config.ignore_tc_lost_connection :
             self.ignore = True
-        if self.message == "short circuit" and config.ignore_tc_short_errors == True:
+        if self.message == "short circuit" and config.ignore_tc_short_errors :
             self.ignore = True
-        if self.message == "unknown" and config.ignore_tc_unknown_error == True:
+        if self.message == "unknown" and config.ignore_tc_unknown_error :
             self.ignore = True
-        if self.message == "cold junction range fault" and config.ignore_tc_cold_junction_range_error == True:
+        if self.message == "cold junction range fault" and config.ignore_tc_cold_junction_range_error :
             self.ignore = True
-        if self.message == "thermocouple range fault" and config.ignore_tc_range_error == True:
+        if self.message == "thermocouple range fault" and config.ignore_tc_range_error :
             self.ignore = True
-        if self.message == "cold junction temp too high" and config.ignore_tc_cold_junction_temp_high == True:
+        if self.message == "cold junction temp too high" and config.ignore_tc_cold_junction_temp_high :
             self.ignore = True
-        if self.message == "cold junction temp too low" and config.ignore_tc_cold_junction_temp_low == True:
+        if self.message == "cold junction temp too low" and config.ignore_tc_cold_junction_temp_low :
             self.ignore = True
-        if self.message == "thermocouple temp too high" and config.ignore_tc_temp_high == True:
+        if self.message == "thermocouple temp too high" and config.ignore_tc_temp_high :
             self.ignore = True
-        if self.message == "thermocouple temp too low" and config.ignore_tc_temp_low == True:
+        if self.message == "thermocouple temp too low" and config.ignore_tc_temp_low :
             self.ignore = True
-        if self.message == "voltage too high or low" and config.ignore_tc_voltage_error == True:
+        if self.message == "voltage too high or low" and config.ignore_tc_voltage_error :
             self.ignore = True
 
     def map_message(self):
@@ -343,7 +343,7 @@ class Max31856(TempSensorReal):
         import adafruit_max31856
         self.thermocouple = adafruit_max31856.MAX31856(self.spi,self.cs,
                                         thermocouple_type=config.thermocouple_type)
-        if (config.ac_freq_50hz == True):
+        if (config.ac_freq_50hz ):
             self.thermocouple.noise_rejection = 50
         else:
             self.thermocouple.noise_rejection = 60
@@ -414,11 +414,11 @@ class Oven(threading.Thread):
     def get_start_from_temperature(profile, temp):
         target_temp = profile.get_target_temperature(0)
         if temp > target_temp + 5:
-            startat = profile.find_next_time_from_temperature(temp)
-            log.info("seek_start is in effect, starting at: {} s, {} deg".format(round(startat), round(to_display(temp))))
+            start_at = profile.find_next_time_from_temperature(temp)
+            log.info("seek_start is in effect, starting at: {} s, {} deg".format(round(start_at), round(to_display(temp))))
         else:
-            startat = 0
-        return startat
+            start_at = 0
+        return start_at
 
     def set_heat_rate(self,runtime,temp):
         '''heat rate is the heating rate in degrees/hour
@@ -438,9 +438,9 @@ class Oven(threading.Thread):
         if time2 > time1:
             self.heat_rate = ((temp2 - temp1) / (time2 - time1))*3600
 
-    def run_profile(self, profile, startat=0, allow_seek=True):
+    def run_profile(self, profile, start_at=0, allow_seek=True):
         log.debug('run_profile run on thread' + threading.current_thread().name)
-        runtime = startat * 60
+        runtime = start_at * 60
         if allow_seek:
             if self.state == 'IDLE':
                 if config.seek_start:
@@ -448,7 +448,7 @@ class Oven(threading.Thread):
                     runtime += self.get_start_from_temperature(profile, temp)
 
         self.reset()
-        self.startat = startat * 60
+        self.start_at = start_at * 60
         self.runtime = runtime
         # derive start_time from the (possibly seek-adjusted) runtime so
         # update_runtime() preserves it instead of resetting to zero
@@ -460,7 +460,7 @@ class Oven(threading.Thread):
         # a new firing invalidates any cooled_safe alert armed by the
         # previous one: the kiln is about to get hot again
         self.cooled_safe_armed_for = None
-        log.info("Running schedule %s starting at %d minutes" % (profile.name,startat))
+        log.info(f"Running schedule {profile.name} starting at {start_at} minutes")
         log.info("Starting")
 
     def abort_run(self, reason='stopped'):
@@ -530,7 +530,7 @@ class Oven(threading.Thread):
     def kiln_must_catch_up(self):
         '''shift the whole schedule forward in time by one time_step
         to wait for the kiln to catch up'''
-        if config.kiln_must_catch_up == True:
+        if config.kiln_must_catch_up :
             temp = self.board.temp_sensor.temperature() + \
                 delta_to_c(config.thermocouple_offset)
             window = delta_to_c(config.pid_control_window)
@@ -647,7 +647,7 @@ class Oven(threading.Thread):
     def reset_if_schedule_ended(self):
         if self.runtime > self.totaltime:
             log.info("schedule ended, shutting down")
-            log.info("total cost = %s%.2f" % (config.currency_type,self.cost))
+            log.info(f"total cost = {config.currency_type}{self.cost:.2f}")
             self.abort_run(reason=END_COMPLETED)
 
     def check_safety_detectors(self):
@@ -739,7 +739,7 @@ class Oven(threading.Thread):
         '''one-shot check at startup: if the automatic restart state file
         says a firing was active but the file is older than the restart
         window, power failed mid-firing and came back too late to resume.'''
-        if not config.automatic_restarts == True:
+        if not config.automatic_restarts :
             return
         if not os.path.isfile(config.automatic_restart_state_file):
             return
@@ -827,17 +827,6 @@ class Oven(threading.Thread):
         except Exception:
             state['run_started'] = None
         state['ended_run_sequence'] = self.ended_run_sequence
-        # embed the full profile so a restart does not depend on the
-        # profile file still being on disk under "<name>.json": runs
-        # started from the ui without saving (or renamed/deleted
-        # afterwards) otherwise resume as an unresolvable filename.
-        try:
-            if self.profile is not None:
-                state['profile_data'] = {"name": self.profile.name,
-                                         "data": self.profile.data}
-        except Exception as e:
-            log.error("could not embed profile data in restart state: %s"
-                      % (e))
         with open(tmp, 'w', encoding='utf-8') as f:
             json.dump(state, f, ensure_ascii=False, indent=4)
             f.flush()
@@ -859,13 +848,13 @@ class Oven(threading.Thread):
 
     def save_automatic_restart_state(self):
         # only save state if the feature is enabled
-        if not config.automatic_restarts == True:
+        if not config.automatic_restarts :
             return False
         self.save_state()
 
     def should_i_automatic_restart(self):
         # only automatic restart if the feature is enabled
-        if not config.automatic_restarts == True:
+        if not config.automatic_restarts :
             return False
         if self.state_file_is_old():
             duplog.info("automatic restart not possible. state file does not exist or is too old.")
@@ -879,10 +868,10 @@ class Oven(threading.Thread):
             # never raise out of the check -- the run() error handler
             # would overwrite the file and destroy the resume. loudly
             # decline instead so the next tick can retry.
-            log.error("automatic restart not possible. state file unreadable: %s" % (e))
+            log.error(f"automatic restart not possible. state file unreadable: {e}")
             return False
         if d.get("state") not in ("RUNNING", "PAUSED"):
-            duplog.info("automatic restart not possible. state = %s" % (d.get("state")))
+            duplog.info(f"automatic restart not possible. state = {d.get('state')}")
             return False
         return True
 
@@ -937,48 +926,16 @@ class Oven(threading.Thread):
         # unclean shutdown) is transient: let it bubble so run()
         # preserves the file and a later tick retries.
         with open(config.automatic_restart_state_file) as infile: d = json.load(infile)
-        try:
-            startat = float(d.get("runtime", 0) or 0) / 60
-        except (TypeError, ValueError):
-            log.error("automatic restart not possible, invalid runtime %r"
-                      % (d.get("runtime"),))
-            self._clear_failed_resume(d)
-            return False
+        start_at = d["runtime"]/60
+        filename = f"{d["profile"]}.json"
+        profile_path = os.path.abspath(os.path.join(os.path.dirname( __file__ ), '..', 'storage','profiles',filename))
 
-        profile = None
-        # prefer the profile embedded in the resume file: it survives
-        # unsaved ui runs and renamed/deleted profile files.
-        saved = d.get("profile_data")
-        if isinstance(saved, dict) and saved.get("name") \
-                and isinstance(saved.get("data"), list):
-            try:
-                profile = Profile(json.dumps({"name": saved["name"],
-                                              "data": saved["data"]}))
-            except Exception as e:
-                log.error("automatic restart not possible, saved profile "
-                          "data is invalid: %s" % (e))
-                profile = None
-        wanted = d.get("profile")
-        if profile is None and wanted:
-            profile = self._load_profile_by_name(wanted)
-            if profile is None:
-                # transient: the file may reappear (re-synced) before
-                # the restart window expires. duplog keeps the 1/sec
-                # retry from spamming the syslog; run() preserves the
-                # resume file by raising RestartRetry instead of a
-                # per-second ERROR.
-                duplog.info("automatic restart waiting for profile %s, "
-                            "retrying" % (wanted,))
-                raise RestartRetry("profile %s not found" % (wanted,))
-        if profile is None:
-            log.error("automatic restart not possible, no resumable "
-                      "profile (profile=%r)" % (wanted,))
-            self._clear_failed_resume(d)
-            return False
-
-        log.info("automatically restarting profile = %s at minute = %d" % (wanted or profile.name,startat))
+        log.info(f"automatically restarting profile = {profile_path} at minute = {start_at}")
+        with open(profile_path) as infile:
+            profile_json = json.dumps(json.load(infile))
+        profile = Profile(profile_json)
         resume_state = d.get("state")
-        self.run_profile(profile, startat=startat, allow_seek=False)  # We don't want a seek on an auto restart.
+        self.run_profile(profile, start_at=start_at, allow_seek=False)  # We don't want a seek on an auto restart.
         # a restart continues the SAME firing, it does not start a new
         # one: restore the saved run identity so the ui, the scheduler
         # chain anchors (run:N) and the firing db (keyed by run_started)
@@ -1006,10 +963,7 @@ class Oven(threading.Thread):
             # the outage struck while paused: stay paused (and do not
             # silently unpause someone's kiln), runtime stays frozen.
             self.state = "PAUSED"
-        try:
-            self.cost = float(d.get("cost", 0) or 0)
-        except (TypeError, ValueError):
-            self.cost = 0
+        self.cost = d["cost"]
         time.sleep(1)
         # the control thread starts before the watcher is attached at
         # boot; a missing watcher must not fail the restart (the
@@ -1030,8 +984,8 @@ class Oven(threading.Thread):
         else:
             log.error("restarted without ovenwatcher; new clients will miss this run's backlog")
         self._emit('restart_resumed',
-                   profile=profile.name,
-                   runtime_minutes=round(startat),
+                   profile=d["profile"],
+                   runtime_minutes=round(start_at),
                    cost=round(self.cost, 2))
         return True
 
@@ -1053,7 +1007,7 @@ class Oven(threading.Thread):
         try:
             return self.alert_manager.emit(alert_id, context=context)
         except Exception as e:
-            log.error("could not emit alert %s: %s" % (alert_id, e))
+            log.error(f"could not emit alert {alert_id}: {e}")
             return False
 
     def run(self):
@@ -1081,7 +1035,7 @@ class Oven(threading.Thread):
                               "restart: %s" % (abort_error))
                 time.sleep(1)
             except Exception as e:
-                log.error("oven control loop error: %s" % (e))
+                log.error(f"oven control loop error: {e}")
                 try:
                     if self.state in ("RUNNING", "PAUSED"):
                         self.abort_run(reason='control loop error')
@@ -1094,7 +1048,7 @@ class Oven(threading.Thread):
                         self.reset()
                 except Exception as abort_error:
                     log.error("could not reset oven after control loop "
-                              "error: %s" % (abort_error))
+                              f"error: {abort_error}")
                 time.sleep(1)
 
     def _run_once(self):
@@ -1103,7 +1057,7 @@ class Oven(threading.Thread):
             if not self.restart_outage_checked:
                 self.restart_outage_checked = True
                 self.check_unresumed_outage()
-            if self.should_i_automatic_restart() == True:
+            if self.should_i_automatic_restart() :
                 self.automatic_restart()
             self.check_safety_detectors()
             self.check_cooled_safe()
@@ -1112,7 +1066,7 @@ class Oven(threading.Thread):
         if self.state in ("PAUSED", "RUNNING") and self.profile is None:
             # inconsistent state, e.g. pause/resume requested while idle.
             # return to idle instead of crashing on the missing profile
-            log.error("%s state without a profile, returning to IDLE" % (self.state))
+            log.error(f"{self.state} state without a profile, returning to IDLE")
             self.reset()
             time.sleep(1)
             return
@@ -1242,29 +1196,13 @@ class SimulatedOven(Oven):
         if heat_on > 0:
             self.heat = heat_on
 
-        log.info("simulation: -> %dW heater: %.0f -> %dW oven: %.0f -> %dW env" % (int(self.p_heat * pid),
-            to_display(self.t_h),
-            int(self.p_ho),
-            to_display(self.t),
-            int(self.p_env)))
+        log.info(f"simulation: -> {int(self.p_heat * pid)}W heater: {to_display(self.t_h)} -> {int(self.p_ho)}W oven: {to_display(self.t)} -> {int(self.p_env)}W env")
 
         time_left = self.totaltime - self.runtime
 
         try:
             ps = self.get_display_pidstats()
-            log.info("temp=%.2f, target=%.2f, error=%.2f, pid=%.2f, p=%.2f, i=%.2f, d=%.2f, heat_on=%.2f, heat_off=%.2f, run_time=%d, total_time=%d, time_left=%d" %
-                (ps['ispoint'],
-                ps['setpoint'],
-                ps['err'],
-                ps['pid'],
-                ps['p'],
-                ps['i'],
-                ps['d'],
-                heat_on,
-                heat_off,
-                self.runtime,
-                self.totaltime,
-                time_left))
+            log.info(f"temp={ps['ispoint']}, target={ps['setpoint']}, error={ps['err']}, pid={ps['pid']}, p={ps['p']}, i={ps['i']}, d={ps['d']}, heat_on={heat_on}, heat_off={heat_off}, run_time={self.runtime}, total_time={self.totaltime}, time_left={time_left}")
         except KeyError:
             pass
 
@@ -1312,9 +1250,7 @@ class RealOven(Oven):
         time_left = self.totaltime - self.runtime
         try:
             ps = self.get_display_pidstats()
-            log.info("temp=%.2f, target=%.2f, error=%.2f, pid=%.2f, p=%.2f, i=%.2f, d=%.2f, heat_on=%.2f, heat_off=%.2f, run_time=%d, total_time=%d, time_left=%d" %
-                (ps['ispoint'],
-                ps['setpoint'],
+            log.info(f"temp=%.2f, target=%.2f, error=%.2f, pid=%.2f, p=%.2f, i=%.2f, d=%.2f, heat_on=%.2f, heat_off=%.2f, run_time={ps['ispoint']}, total_time={ps['setpoint'],
                 ps['err'],
                 ps['pid'],
                 ps['p'],
@@ -1324,7 +1260,7 @@ class RealOven(Oven):
                 heat_off,
                 self.runtime,
                 self.totaltime,
-                time_left))
+                time_left}, time_left=%d")
         except KeyError:
             pass
 
@@ -1452,7 +1388,7 @@ class PID():
             if config.throttle_below_temp and config.throttle_percent:
                 if setpoint <= to_c(config.throttle_below_temp):
                     output = config.throttle_percent/100
-                    log.info("max heating throttled at %d percent below %d degrees to prevent overshoot" % (config.throttle_percent,config.throttle_below_temp))
+                    log.info(f"max heating throttled at {config.throttle_percent} percent below {config.throttle_below_temp} degrees to prevent overshoot")
         else:
             ki = self.ki if self.ki else 1
             self.iterm += (error * timeDelta * (1/ki))

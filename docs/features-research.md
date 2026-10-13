@@ -5,8 +5,8 @@ Status: research only, not yet implemented. Saved 2026-08-12.
 ## Current kiln-controller feature set (confirmed in code)
 
 - Ramp/hold profiles as raw segment lists (ramp rate, target temp, hold minutes)
-- Delay start (scheduler with `startat`)
-- Skip-to-point / resume mid-schedule (`startat` + seek logic)
+- Delay start (scheduler with `start_at`)
+- Skip-to-point / resume mid-schedule (`start_at` + seek logic)
 - Pause / resume
 - Emergency shutoff: temp too high, too many TC errors, heat-rate-too-low
 - Auto-restart after power loss (`allow_seek=False`)
