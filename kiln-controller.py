@@ -11,8 +11,10 @@ import tarfile
 import io
 import re
 import base64
+import sqlite3
 import subprocess
 import importlib
+import tempfile
 import threading
 
 import requests
@@ -235,6 +237,8 @@ def api_dump():
         for filename in profile_files():
             _tar_add_path(tar, os.path.join('profiles', filename),
                           os.path.join(profile_path, filename))
+        _tar_add_db(tar, 'firings.db',
+                    getattr(config, 'firing_db_file', None))
         _tar_add_bytes(tar, 'kiln.logs',
                        '\n'.join(gather_log_lines()) + '\n')
     out.seek(0)

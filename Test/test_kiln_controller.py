@@ -4,6 +4,7 @@ import inspect
 import io
 import json
 import os
+import sqlite3
 import tarfile
 import time
 import threading
@@ -117,6 +118,13 @@ def test_api_dump_returns_targz(monkeypatch, tmp_path):
     (profiles_dir / 'bisque.json').write_text(
         json.dumps({'name': 'bisque', 'data': [[0, 100]]}))
     monkeypatch.setattr(controller, 'profile_path', str(profiles_dir))
+    db_path = tmp_path / 'firings.db'
+    con = sqlite3.connect(str(db_path))
+    con.execute("CREATE TABLE firings (id INTEGER PRIMARY KEY, profile TEXT)")
+    con.execute("INSERT INTO firings (profile) VALUES ('cone-05')")
+    con.commit()
+    con.close()
+    monkeypatch.setattr(config, 'firing_db_file', str(db_path))
 
     resp = controller.api_dump()
     assert resp.headers['Content-Type'] == 'application/gzip'
@@ -127,7 +135,7 @@ def test_api_dump_returns_targz(monkeypatch, tmp_path):
     assert set(tar.getnames()) == {
         'config.py', 'state.json',
         'profiles/cone-05.json', 'profiles/bisque.json',
-        'kiln.logs',
+        'firings.db', 'kiln.logs',
     }
     assert 'INFO oven: temp=100' in tar.extractfile('kiln.logs').read().decode()
     assert '{"state": "RUNNING"}' in tar.extractfile('state.json').read().decode()
@@ -135,6 +143,17 @@ def test_api_dump_returns_targz(monkeypatch, tmp_path):
     assert profile == {'name': 'cone-05', 'data': [[0, 200]]}
     # config.py must be the real repo config
     assert 'emergency_shutoff_temp' in tar.extractfile('config.py').read().decode()
+    # firings.db must be a queryable sqlite copy of the firing db
+    db_raw = tar.extractfile('firings.db').read()
+    assert db_raw[:6] == b'SQLite'
+    copy_path = tmp_path / 'firings-copy.db'
+    copy_path.write_bytes(db_raw)
+    copy = sqlite3.connect(str(copy_path))
+    try:
+        rows = copy.execute("SELECT profile FROM firings").fetchall()
+    finally:
+        copy.close()
+    assert rows == [('cone-05',)]
 
 
 def test_api_dump_without_profiles(monkeypatch, tmp_path):

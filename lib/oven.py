@@ -26,6 +26,12 @@ class DupFilter(object):
         self.msgs.add(record.msg)
         return rv
 
+class RestartRetry(Exception):
+    '''a resume was requested but its profile is not available right now.
+    raised by automatic_restart() so run() can preserve the resume file
+    and retry on a later tick without logging an error every second.'''
+
+
 class Duplogger():
     def __init__(self):
         self.log = logging.getLogger(f"{__name__}.dupfree")
@@ -869,7 +875,56 @@ class Oven(threading.Thread):
             return False
         return True
 
+    def _load_profile_by_name(self, wanted):
+        '''load a stored profile by its internal name. profiles are
+        matched on the "name" inside the file (like find_profile in
+        kiln-controller.py), never by assuming the filename is
+        "<name>.json", and the configured profiles directory is used
+        instead of a hardcoded path. returns a Profile or None when no
+        stored profile carries that name.'''
+        try:
+            filenames = os.listdir(config.kiln_profiles_directory)
+        except OSError:
+            return None
+        for filename in filenames:
+            path = os.path.join(config.kiln_profiles_directory, filename)
+            try:
+                with open(path, 'r') as f:
+                    obj = json.load(f)
+            except (IOError, ValueError):
+                continue
+            if not isinstance(obj, dict):
+                continue
+            if obj.get('name') != wanted:
+                continue
+            try:
+                return Profile(json.dumps(obj))
+            except Exception:
+                continue
+        return None
+
+    def _clear_failed_resume(self, d):
+        '''give up on an unresumable firing: go IDLE and overwrite the
+        resume file with that (so later ticks stop retrying), then emit
+        restart_not_resumed so the loss is visible instead of silent.'''
+        try:
+            runtime = float(d.get("runtime", 0) or 0)
+        except (TypeError, ValueError):
+            runtime = 0
+        try:
+            self.reset()
+            self.save_automatic_restart_state()
+        except Exception as e:
+            log.error("could not clear failed automatic restart state: %s"
+                      % (e))
+        self._emit('restart_not_resumed',
+                   profile=d.get('profile'),
+                   runtime_minutes=round(runtime / 60))
+
     def automatic_restart(self):
+        # the state file itself being unreadable (torn write from an
+        # unclean shutdown) is transient: let it bubble so run()
+        # preserves the file and a later tick retries.
         with open(config.automatic_restart_state_file) as infile: d = json.load(infile)
         start_at = d["runtime"]/60
         filename = f"{d["profile"]}.json"
@@ -932,6 +987,7 @@ class Oven(threading.Thread):
                    profile=d["profile"],
                    runtime_minutes=round(start_at),
                    cost=round(self.cost, 2))
+        return True
 
     def set_ovenwatcher(self,watcher):
         log.info("ovenwatcher set in oven class")
@@ -965,6 +1021,19 @@ class Oven(threading.Thread):
             except StopIteration:
                 # loop-termination sentinel, not an error
                 raise
+            except RestartRetry:
+                # the resume file asks for a profile that is not on
+                # disk right now. automatic_restart() already logged
+                # it once via duplog; stay safe WITHOUT saving so the
+                # resume file survives and a later tick retries, and
+                # without a per-second ERROR that spams the syslog.
+                # reset() also cuts the relay on real ovens.
+                try:
+                    self.reset()
+                except Exception as abort_error:
+                    log.error("could not reset oven after deferred "
+                              "restart: %s" % (abort_error))
+                time.sleep(1)
             except Exception as e:
                 log.error(f"oven control loop error: {e}")
                 try:
@@ -1055,6 +1124,24 @@ class SimulatedOven(Oven):
         # start thread
         self.start()
         log.info("SimulatedOven started")
+
+    def reset_simulated_temperature(self):
+        '''return the simulated kiln to its default start temp
+        (config.sim_t_env). called when a simulated run ends or is
+        stopped so the next run starts cold instead of inheriting the
+        previous firing's heat.'''
+        self.t_env = to_c(config.sim_t_env)
+        self.t = self.t_env
+        self.t_h = self.t_env
+        self.temperature = self.t_env
+        try:
+            self.board.temp_sensor.simulated_temperature = self.t_env
+        except AttributeError:
+            pass
+
+    def abort_run(self, reason='stopped'):
+        super().abort_run(reason=reason)
+        self.reset_simulated_temperature()
 
     # runtime is in sped up time, start_time is epoch seconds (real time)
     def get_start_time(self):

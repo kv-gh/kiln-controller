@@ -15,6 +15,7 @@ from lib.oven import (
     Oven,
     PID,
     Profile,
+    RestartRetry,
     SimulatedOven,
     TempSensorReal,
     TempTracker,
@@ -749,6 +750,7 @@ def test_automatic_restart(tmp_path, monkeypatch):
     }))
 
     monkeypatch.setattr(config, 'automatic_restart_state_file', str(state_file))
+    monkeypatch.setattr(config, 'kiln_profiles_directory', str(profiles_dir))
     monkeypatch.setattr(oven_module(), '__file__', str(storage / 'oven.py'))
     monkeypatch.setattr(oven_module().time, 'sleep', lambda s: None)
 
@@ -1082,6 +1084,9 @@ def test_run_paused_branch(monkeypatch):
 
     monkeypatch.setattr(oven_module().Oven, 'update_runtime', lambda self: calls.append('runtime'))
     monkeypatch.setattr(oven_module().Oven, 'update_target_temp', lambda self: calls.append('target'))
+    # stubbed: the real one would write the real state.json restart file
+    monkeypatch.setattr(oven_module().Oven, 'save_automatic_restart_state',
+                        lambda self: calls.append('save'), raising=False)
     monkeypatch.setattr(oven_module().Oven, 'heat_then_cool',
                         lambda self: calls.append('heat'), raising=False)
     monkeypatch.setattr(oven_module().Oven, 'reset_if_emergency', lambda self: calls.append('emergency'))
@@ -1096,7 +1101,8 @@ def test_run_paused_branch(monkeypatch):
     with pytest.raises(StopIteration):
         oven.run()
 
-    assert calls == (['runtime', 'target', 'heat', 'emergency', 'ended'] * 2)
+    assert calls == (['runtime', 'target', 'save', 'heat', 'emergency',
+                      'ended'] * 2)
 
 
 def test_run_running_branch(monkeypatch):
